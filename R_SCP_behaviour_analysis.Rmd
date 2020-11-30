@@ -1,0 +1,182 @@
+---
+title: "SCP Behavioural Analysis"
+output: html_notebook
+---
+
+# Packages
+```{r}
+library(nlme)
+library(ggplot2)
+library(emmeans)
+library(Rmisc)
+```
+
+# Read in and subset the data
+```{r}
+data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_clean/SCP_behavioural_data.csv")
+
+# subset the data
+data_fine<-subset(data, granularity == "fine")
+data_coarse<-subset(data, granularity == "coarse")
+
+```
+
+# One sample t-tests to see if each condiiton is above 33.33% chance
+```{r}
+# further subset the data into each condition 
+short_R<-subset(data, delay =="short" & congruency == "R")
+short_UR<-subset(data, delay =="short" & congruency == "UR")
+long_R<-subset(data, delay =="long" & congruency == "R")
+long_UR<-subset(data, delay =="long" & congruency == "UR")
+
+# one sample t tests
+t.test(short_R$accuracy_rel, mu = 33.33, alternative = "two.sided")
+t.test(short_UR$accuracy_rel, mu = 33.33, alternative = "two.sided")
+t.test(long_R$accuracy_rel, mu = 33.33, alternative = "two.sided")
+t.test(long_UR$accuracy_rel, mu = 33.33, alternative = "two.sided")
+
+```
+
+# Investigating accuracy as a function of congruency and delay (collapsed across granularity)
+```{r}
+# model 
+model<-lme(accuracy_rel ~ delay*congruency, random= ~1|subj, data=data, na.action=na.omit)
+anova(model)
+
+#pairwise comparisons 
+emmeans(model, list(pairwise ~ delay:congruency), adjust = "none") 
+
+# descriptive stats
+stats<-summarySEwithin(data=data, measurevar = "accuracy_rel", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+
+```
+
+## Investigating coarse trial accuracy as a function of congruency and delay
+```{r}
+# model
+model<-lme(accuracy_gran ~ delay*congruency, random= ~1|subj, data=data_coarse, na.action=na.omit)
+anova(model)
+
+#pairwise comparisons for interaction 
+emmeans(model, list(pairwise ~ delay:congruency), adjust = "none") 
+
+# descriptive stats
+stats<-summarySEwithin(data=data_coarse, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+
+```
+
+## Investigating fine/detailed trial accuracy as a function of congruency and delay
+```{r}
+# model 
+model<-lme(accuracy_gran ~ delay*congruency, random= ~1|subj, data=data_fine, na.action=na.omit)
+anova(model)
+
+# descriptive stats
+stats<-summarySEwithin(data=data_fine, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+
+```
+
+
+# Plotting behavioural data
+```{r, fig.height=4.5,fig.width=4.5}
+
+########## Get the desired error bars ##########
+
+# fine summary 
+stats<-summarySEwithin(data=data_fine, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+stats$upper_se<-NaN
+stats$lower_se<-NaN
+stats$gran<-rep("fine", length(stats$accuracy_gran))
+
+# coarse summary
+stats2<-summarySEwithin(data=data_coarse, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+stats2$upper_se<-NaN
+stats2$lower_se<-NaN
+stats2$gran<-rep("coarse", length(stats2$accuracy_gran))
+
+#combine the datasets 
+stats3<-rbind(stats2,stats)
+
+#get error bars from total related and unrelated 
+stats1<-summarySEwithin(data=data, measurevar = "accuracy_rel", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+
+#add correct error bars (which represent se collapsed across granularity) to the datset 
+# R short 
+stats3[7,"upper_se"]<- stats3[7,"accuracy_gran"] + stats3[3,"accuracy_gran"] + stats1[3,"se"]
+stats3[7,"lower_se"]<- stats3[7,"accuracy_gran"] + stats3[3,"accuracy_gran"] - stats1[3,"se"]
+
+#UR short
+stats3[8,"upper_se"]<- stats3[8,"accuracy_gran"] + stats3[4,"accuracy_gran"] + stats1[4,"se"]
+stats3[8,"lower_se"]<- stats3[8,"accuracy_gran"] + stats3[4,"accuracy_gran"] - stats1[4,"se"]
+
+#R long
+stats3[5,"upper_se"]<- stats3[5,"accuracy_gran"] + stats3[1,"accuracy_gran"] + stats1[1,"se"]
+stats3[5,"lower_se"]<- stats3[5,"accuracy_gran"] + stats3[1,"accuracy_gran"] - stats1[1,"se"]
+
+#UR long
+stats3[6,"upper_se"]<- stats3[6,"accuracy_gran"] + stats3[2,"accuracy_gran"] + stats1[2,"se"]
+stats3[6,"lower_se"]<- stats3[6,"accuracy_gran"] + stats3[2,"accuracy_gran"] - stats1[2,"se"]
+
+
+# subset into related and unrelated to plot separately 
+stats4<-subset(stats3, congruency == "R")
+stats5<-subset(stats3, congruency == "UR") 
+
+
+
+########## Plot the data ##########
+
+### congruent plot 
+ggplot(stats4[order(stats4$gran, decreasing = T),], aes(x=delay, y=accuracy_gran, fill=factor(gran, levels=c("fine","coarse")))) + 
+  theme_classic() +
+  geom_bar(stat = "identity", position = "stack", width = 0.6, color="black") + 
+  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
+  labs(x="", y="% correct") +
+  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
+  theme(axis.text=element_text(size=16))+
+  labs(fill="") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("detailed","coarse"))+ ## for manuscript
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  ggtitle("congruent")+
+  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
+
+### incongruent plot 
+ggplot(stats5[order(stats5$gran, decreasing = T),], aes(x=delay, y=accuracy_gran, fill=factor(gran, levels=c("fine","coarse")))) + 
+  theme_classic() +
+  geom_bar(stat = "identity", position = "stack", width = 0.6,color="black") + 
+  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
+  labs(x="", y="% correct") +
+  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
+  theme(axis.text=element_text(size=16))+
+  labs(fill="") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("detailed","coarse"))+ ## manuscript 
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  ggtitle("incongruent")+
+  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
+
+```
+
+
+Control analysis to check if PROPORTION of details forotten differs between R/UR. 
+- Since there are more congruent detailed memories at the long delay, we want to know if congruency/R benefits retention of details or if its just the case that there are more congruent detailed memories to begin with 
+```{r}
+# subset the data
+forgetting_fine<-subset(data, delay=="long"& granularity == "fine")
+forgetting_coarse<-subset(data, delay=="long"& granularity == "coarse")
+
+# models
+model<-lme(forgetting ~ congruency, random= ~1|subj, data=forgetting_fine, na.action=na.omit)
+anova(model)
+
+model<-lme(forgetting ~ congruency, random= ~1|subj, data=forgetting_coarse, na.action=na.omit)
+anova(model)
+
+```
+
+
+
+

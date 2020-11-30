@@ -1,0 +1,59 @@
+---
+title: "SCP Connectivity Analysis"
+output: html_notebook
+---
+
+Sam Audrain November 2020 
+V 0.0.1
+
+# Packages and functions
+```{r}
+library(dplyr)
+library(ggplot2)
+
+```
+
+# Read in data
+```{r}
+data2<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_clean/SCP_connectivity_data.csv")
+
+```
+
+# Correlation tests
+```{r}
+attach(data2)
+
+# a priori hypothesis testing: Do people with greater post-encoding anterior hippocampal-mPFC coupling have coarser congruent memories 3 days later?
+cor.test(post_pre_AH_mPFC, coarse_related_long, alternative = "greater")
+
+# control correlations 
+cor.test(post_pre_AH_mPFC, fine_related_long, alternative = "two.sided")
+cor.test(post_pre_AH_mPFC, coarse_unrelated_long, alternative = "two.sided")
+cor.test(post_pre_AH_mPFC, fine_unrelated_long, alternative = "two.sided")
+cor.test(post_pre_AH_mPFC, total_accuracy_long, alternative = "two.sided")
+```
+
+# Plot the a priori correlation 
+```{r, fig.height=6,fig.width=5.5}
+
+data2 %>%
+  ggplot(aes(y = coarse_related_long, x = post_pre_AH_mPFC)) +
+  geom_smooth(method = lm, level = 0.95, color = "black") +
+  geom_point(size = 5) +
+  theme_classic() +
+  theme(text = element_text(size = 18), axis.text.x = element_text(size=18), axis.text.y = element_text(size=18), plot.title = element_text(face="bold", hjust=0.5, size=22), legend.position="bottom")+
+  scale_shape_manual(values=c(20))+
+  guides(shape = FALSE, size = FALSE)+
+  labs(y = "coarse congruent retrieval (% of congruent)",
+       x = "ant. hipp - mPFC connectivity (post-pre)",
+       title = "")
+
+
+```
+
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).

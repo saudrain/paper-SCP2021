@@ -2,7 +2,8 @@
 title: "SCP Behavioural Analysis"
 output: html_notebook
 ---
-Sam Audrain 2020
+Sam Audrain November 2020 
+V 0.0.1
 
 # Packages
 ```{r}

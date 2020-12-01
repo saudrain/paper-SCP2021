@@ -15,7 +15,7 @@ library(Rmisc)
 
 # Read in and subset the data
 ```{r}
-data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_clean/SCP_behavioural_data.csv")
+data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/SCP_behavioural_data.csv")
 
 # subset the data
 data_fine<-subset(data, granularity == "fine")

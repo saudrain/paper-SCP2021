@@ -70,24 +70,24 @@ This file accompanies R_SCP_connectivity_analysis.Rmd.
 RSA_output
 - each csv file in this folder contains output from the RSA analysis
 - Description of file names: [congruency_condition_delay_mask]
-  -- congruency:
-    --- R = congruent trials, UR = incongruent trials
-  -- condition:
-    --- samescene_fine = correlations were between detailed trials that shared the same background scene (e.g. big beach with other big beach trials)
-    --- simscene_fine = correlations were between detailed trials that had similar scenes within the same context (e.g. between big beach and small beach trials)
-    --- xcon_fine = correlations were between detailed trials of opposing contexts (e.g. big beach correlated with brown kitchen and white kitchen trials)
-    --- wincon = within context correlations (e.g. correlations between trials paired with beaches, regardless of scene granularity)
-    --- xcon = across context correlations (e.g. correlations between beach and kitchen trials, regardless of scene granularity)
-  -- delay:
-    --- short = short delay trials
-    --- long = long delay trials
-  -- mask:
-    --- BNA_mPFC2: mPFC
-    --- right_hippo_ant: right anterior hippocampus
-    --- right_hippo_post: right posterior hippocampus
+  - congruency:
+    - R = congruent trials, UR = incongruent trials
+  - condition:
+    - samescene_fine = correlations were between detailed trials that shared the same background scene (e.g. big beach with other big beach trials)
+    - simscene_fine = correlations were between detailed trials that had similar scenes within the same context (e.g. between big beach and small beach trials)
+    - xcon_fine = correlations were between detailed trials of opposing contexts (e.g. big beach correlated with brown kitchen and white kitchen trials)
+    - wincon = within context correlations (e.g. correlations between trials paired with beaches, regardless of scene granularity)
+    - xcon = across context correlations (e.g. correlations between beach and kitchen trials, regardless of scene granularity)
+  - delay:
+    - short = short delay trials
+    - long = long delay trials
+  - mask:
+    - BNA_mPFC2: mPFC
+    - right_hippo_ant: right anterior hippocampus
+    - right_hippo_post: right posterior hippocampus
 - Description of file contents:
-  -- Columns from left to right: subject identifier, correlation number, mask, Pearson's correlation
-  -- These are all across-run correlations, and have not been averaged in any way, or Fisher transformed
+  - Columns from left to right: subject identifier, correlation number, mask, Pearson's correlation
+  - These are all across-run correlations, and have not been averaged in any way, or Fisher transformed
 
 This data accompanies the SCP_mPFC_analyses.Rmd and SCP_hippo_analyses.Rmd scripts.
 

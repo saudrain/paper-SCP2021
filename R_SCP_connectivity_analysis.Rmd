@@ -15,7 +15,7 @@ library(ggplot2)
 
 # Read in data
 ```{r}
-data2<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_clean/SCP_connectivity_data.csv")
+data2<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/SCP_connectivity_data.csv")
 
 ```
 

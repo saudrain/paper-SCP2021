@@ -40,7 +40,7 @@ for (delay in delays){
     for (gran in grans){
       for(gran2 in grans2){
         for (mask in masks){
-           data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_clean/RSA_output/",cond,"_corrs_",gran,"_fine_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+           data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output/",cond,"_corrs_",gran,"_fine_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
           colnames(data)<- c("subj", "trial", "mask", "R")
           data$R_fish<-fisherz(data$R)
           data$condition<-rep(gran, (nrow(data)))

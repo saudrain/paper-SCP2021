@@ -87,10 +87,10 @@ SCP_connectivity_data_long.csv
 - hand: handedness
 - ESL?: English as second language
 - include_rest: 0= does not have a rest scan or bad rest scan, 1 = good rest scan to include_rest
-- congruency: related/congruent or unrelated/incongruent condition 
-- granularity: coarse or fine/detailed condition 
+- congruency: R = congruent, UR = incongruent
+- granularity: coarse = coarse memories, fine = detailed memories
 - post_pre_AH_mPFC: post encoding resting state connectivity minus pre encoding resting state connectivity between the anterior hippocampus and mPFC
-- accuracy_gran: % of congruent or incongruent trials remembered coarsely or with detail across the long delay 
+- accuracy_gran: accuracy broken down by both congruency and granularity across the long delay
 
 These files accompany R_SCP_connectivity_analysis.Rmd.
 

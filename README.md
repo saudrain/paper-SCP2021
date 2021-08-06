@@ -1,23 +1,27 @@
 # The Paper
 This repository includes scripts and data for the following paper:
 
-Audrain & McAndrews, Schemas provide a scaffold for neocortical integration at the cost of memory specificity over time
+Audrain & McAndrews, Schemas provide a scaffold for neocortical integration of new memories over time.
 
 # Abstract
-Memory transformation is increasingly acknowledged in theoretical accounts of systems consolidation, yet how memory quality and neural representation change over time and how schemas influence this process remains unclear.  In this fMRI study, participants encoded and retrieved schema-congruent and incongruent object-scene pairs using a paradigm that probed coarse and detailed memories over 10-minutes and 72-hours. When a congruent schema was available, details were lost over time as representations were integrated in the medial prefrontal cortex (mPFC), and enhanced post-encoding coupling between the anterior hippocampus and mPFC was associated with coarser memories.  Over time, pattern similarity in the hippocampus changed such that the posterior hippocampus represented specific details and the anterior hippocampus represented the general context of specific memories, irrespective of congruency. Our findings suggest schemas are used as a scaffold for accelerated consolidation of congruent information, and illustrate change in hippocampal organization of detailed contextual memory over time.
+Memory transformation is increasingly acknowledged in theoretical accounts of systems consolidation, yet how memory quality and neural representation change over time and how schemas influence this process remains unclear.  In this multi-day fMRI study, participants encoded and retrieved schema-congruent and incongruent object-scene pairs using a paradigm that probed memory representations over 10-minutes and 72-hours. When a congruent schema was available, memory became coarser over time as representations were integrated in the medial prefrontal cortex (mPFC), aided by post-encoding coupling between the anterior hippocampus and mPFC. In the hippocampus, pattern similarity changed across 72-hours such that the posterior hippocampus represented specific details and the anterior hippocampus represented the general context of specific memories, irrespective of congruency. Our findings suggest schemas are used as a scaffold for accelerated consolidation of congruent information, and illustrate evolution in hippocampal organization of detailed contextual memory over time. 
 
 # The scripts
 All scripts were coded and run in RStudio version 1.2.5033.
 
 R scripts:
 - R_SCP_behaviour_analysis.Rmd
-  - contains code for the behavioural modelling and plots
+  - contains code for the behavioural modelling and plots of the main manuscript, as well as control proportion forgotten analysis, and plots of forgotten/incorrect trials according to each condition as outlined in the supplementary material. 
 - R_SCP_connectivity_analysis.Rmd
-  - contains code for the resting state connectivity correlations with behaviour and plot
-- SCP_mPFC_analyses.Rmd
-  - contains code for modelling and plotting of the medial prefrontal cortex RSA analyses
-- SCP_hippo_analyses.Rmd
-  - contains code for modelling and plotting of the hippocampal RSA analyses
+  - contains code for the resting state connectivity correlations with behaviour and plot, in main manuscript. 
+- SCP_RSA_context_mem_analyses.Rmd
+  - contains code for modelling and plotting of the medial prefrontal cortex RSA analyses on context memory trials (main manuscript), and corresponding plots for hippocampal ROIs (supplementary material). 
+- SCP_RSA_scene_mem_analyses.Rmd
+  - contains code for modelling and plotting of the hippocampal RSA analyses on trials remembered with specificity (main manuscript), and corresponding plots for the mPFC ROI (supplementary material). 
+- R_SCP_CongruencyBias.Rmd
+  - contains code for modelling and plotting the behavioural control congruency bias analysis, as outlined in the supplementary material. 
+- R_SCP_objectsim.Rmd
+  - contains code for modelling and plotting the control RSA object pattern similarity analysis between context-related objects versus arbitrary objects, as outlined in the supplementary material.
 
 # The data
 ## The behavioural data
@@ -26,9 +30,20 @@ SCP_behavioural_data.csv
 - delay: short = short delay, long = long delay
 - congruency: R = congruent, UR = incongruent
 - granularity: coarse = coarse memories, fine = detailed memories
+- cond: congruency x granularity interaction terms 
 - accuracy_gran: accuracy broken down by both congruency and granularity
 - accuracy_rel: accuracy based on congruency, collapsed across granularity
-- forgetting: proportion of trials forgotten across the short delay relative to the long delay (long delay% - short delay%, negative values mean worse memory over time), broken down by both congruency and granularity
+- prop_forgetting: refers to proportion forgotten across long delay relative to short, short-long/short for accuracy_gran scores
+- include: subjects with 0 are outliers with very high coarse congruent memory across long delay 
+- CB_order: counterbalancing order, subjects with 1 did short delay followed by long delay, subjects with 2 had long delay followed by short delay
+- DK: for coarse memories, these numbers refer to number of trials where subjects said 'don't know' to context question. For detailed memories, it's the number of trials where they got the coarse context correct but answered 'don't know' for the scene question. 
+- incorrect: for coarse memories, this refers to number of trials where the subject chose the wrong context. For detailed memories, it refers to number of trials where subject answered the coarse context qusetion correctly but got the scene question incorrect. 
+- total_forgot: total number of trials forgotten, including incorrect and 'don't know' trials
+- R_enc: number of trials judged as related/congruent at encoding 
+- UR_enc: number of trials judged as unrelated/incongruent at encoding 
+- DK_perc: % of total congruent/incongruent trails (as judged at encoding) where subject answered 'don't know'
+- incorrect_perc: % of total congruent/incongruent trials (as judged at encoding) where subject made incorrect response 
+- total_forgot_perc: total % forgotten (including incorrect and 'don't know' responses) 
 
 This file accompanies R_SCP_behaviour_analysis.Rmd
 
@@ -64,7 +79,20 @@ SCP_connectivity_data.csv
 - coarse_related_long: % of congruent trials remembered coarsely across long delay (# of coarse congruent trials across long delay / # of trials judged as congruent at encoding)
 - coarse_unrelated_long: % of incongruent trials remembered coarsely across long delay (# of coarse incongruent trials across long delay / # of trials judged as incongruent at encoding)
 
-This file accompanies R_SCP_connectivity_analysis.Rmd.
+SCP_connectivity_data_long.csv
+- subj: subject number
+- CONN order: subject number within the CONN toolbox used for the connectivity analysis 
+- age: age of each subject 
+- gender: gender of each subject 
+- hand: handedness
+- ESL?: English as second language
+- include_rest: 0= does not have a rest scan or bad rest scan, 1 = good rest scan to include_rest
+- congruency: related/congruent or unrelated/incongruent condition 
+- granularity: coarse or fine/detailed condition 
+- post_pre_AH_mPFC: post encoding resting state connectivity minus pre encoding resting state connectivity between the anterior hippocampus and mPFC
+- accuracy_gran: % of congruent or incongruent trials remembered coarsely or with detail across the long delay 
+
+These files accompany R_SCP_connectivity_analysis.Rmd.
 
 ## RSA data for statistical models
 RSA_output
@@ -78,6 +106,9 @@ RSA_output
     - xcon_fine = correlations were between detailed trials of opposing contexts (e.g. big beach correlated with brown kitchen and white kitchen trials)
     - wincon = within context correlations (e.g. correlations between trials paired with beaches, regardless of scene granularity)
     - xcon = across context correlations (e.g. correlations between beach and kitchen trials, regardless of scene granularity)
+    - contextO = correlations between arbitrary objects with incongruent backgrounds
+    - arbO = correlations between context-related (kitchen or beach objects) objects with incongruent backgrounds 
+    - arbcontextO = correlations between context-related objects and arbitrary objects with incongruent backgrounds 
   - delay:
     - short = short delay trials
     - long = long delay trials
@@ -89,7 +120,8 @@ RSA_output
   - Columns from left to right: subject identifier, correlation number, mask, Pearson's correlation
   - These are all across-run correlations, and have not been averaged in any way, or Fisher transformed
 
-This data accompanies the SCP_mPFC_analyses.Rmd and SCP_hippo_analyses.Rmd scripts.
+
+This data accompanies the SCP_RSA_context_mem_analyses.Rmd and SCP_RSA_scene_mem_analyses.Rmd and R_SCP_objectsim.Rmd scripts.
 
 # License
 All code in this repository is licensed under the MIT license.
@@ -97,4 +129,4 @@ All code in this repository is licensed under the MIT license.
 The data included in this repository is licensed under the Creative Commons Attribution 4.0 International License. To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/ or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
 # Inquiries
-Please contact samantha.audrain at mail.utoronto.ca for questions, comments, or bugs.
+Please contact samanthaaudrain at gmail dot com for questions, comments, or bugs.

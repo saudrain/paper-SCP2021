@@ -2,7 +2,7 @@
 title: "SCP RSA Modelling of Scene Memory Data"
 output: html_notebook
 ---
-
+ 
 Sam Audrain June 2021
 V 0.0.2
 
@@ -211,7 +211,9 @@ leveneTest(residuals(model) ~ data2$delay)
 # model stats
 anova(model)
 emmeans(model, list(pairwise ~ condition), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178) 
+
 ```
+
 
 ## Plots
 ```{r, fig.height=5,fig.width=4.5}

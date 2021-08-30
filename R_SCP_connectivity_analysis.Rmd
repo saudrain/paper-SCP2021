@@ -5,7 +5,7 @@ output: html_notebook
 
 Sam Audrain June 2021
 V 0.0.2
-
+ 
 # Packages and functions
 ```{r}
 library(dplyr)

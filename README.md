@@ -6,9 +6,12 @@ Audrain & McAndrews, Schemas provide a scaffold for neocortical integration of n
 # Abstract
 Memory transformation is increasingly acknowledged in theoretical accounts of systems consolidation, yet how memory quality and neural representation change over time and how schemas influence this process remains unclear.  In this multi-day fMRI study, participants encoded and retrieved schema-congruent and incongruent object-scene pairs using a paradigm that probed memory representations over 10-minutes and 72-hours. When a congruent schema was available, memory became coarser over time as representations were integrated in the medial prefrontal cortex (mPFC), aided by post-encoding coupling between the anterior hippocampus and mPFC. In the hippocampus, pattern similarity changed across 72-hours such that the posterior hippocampus represented specific details and the anterior hippocampus represented the general context of specific memories, irrespective of congruency. Our findings suggest schemas are used as a scaffold for accelerated consolidation of congruent information, and illustrate evolution in hippocampal organization of detailed contextual memory over time. 
 
-# The scripts
-All scripts were coded and run in RStudio version 1.2.5033.
+# The Software
+All scripts were coded and run in RStudio version 1.2.5033, using RNotebook. 
 
+Rstudio can be downloaded here: https://www.rstudio.com/products/rstudio/download/ , and must be installed on your local machine in order to run these scripts. Installation of RStudio can take several minutes. 
+
+# The scripts
 R scripts:
 - R_SCP_behaviour_analysis.Rmd
   - contains code for the behavioural modelling and plots of the main manuscript, as well as control proportion forgotten analysis, and plots of forgotten/incorrect trials according to each condition as outlined in the supplementary material. 
@@ -122,6 +125,15 @@ RSA_output
 
 
 This data accompanies the SCP_RSA_context_mem_analyses.Rmd and SCP_RSA_scene_mem_analyses.Rmd and R_SCP_objectsim.Rmd scripts.
+
+# Running the scripts 
+To run these scripts, you will need to download and save the associated .csv files (described under "The Data" section) and the RSA_output folder on your local machine. 
+
+You will need to change the path in each script to point to wherever you saved the data on your local machine (denoted by ###### CHANGE PATH FOR YOUR DATA ####### within each script). 
+
+You will also need to download the function summarySEwithin2.R and save it in the same folder as the downloaded scripts, in order to be able to calculate wtihin-subject standard error bars for the plots. 
+
+Running these scripts will reproduce the stasticial analyses (ANOVA tables, pairwise comparison tables, correlation tests etc.), as well as plots of the data used in the main manuscript and supplementary material. Each script should take no more than a few minutes to run. 
 
 # License
 All code in this repository is licensed under the MIT license.

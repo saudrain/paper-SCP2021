@@ -14,8 +14,9 @@ library(emmeans)
 library(Rmisc)
 library(lme4)
 library(car)
+library(lmerTest)
+library(report)
 
-#library(pbkrtest)
 source("summarySEwithin2.R")
 ```
 
@@ -37,20 +38,26 @@ data_coarse<-subset(data, granularity == "coarse")
 
 ```{r}
 # model 
-model <-lmer(accuracy_rel ~ delay*congruency + (1|subj), data=data, na.action=na.omit)
+# model <-lmer(accuracy_rel ~ delay*congruency + (1+CB_order|subj), data=data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+# 
+# ## check model assumptions 
+# hist(residuals(model)) #should be normally distributed 
+# plot(model)#should look fairly uniform and random. There may be some slight heteroskedasticity here, so test formally with Levene's test
+# data2<-subset(data, granularity == "coarse" & !is.na(accuracy_rel)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch 
+# leveneTest(residuals(model) ~ data2$congruency * data2$delay)
+# leveneTest(residuals(model) ~ data2$congruency)
+# leveneTest(residuals(model) ~ data2$delay)
 
-## check model assumptions 
-hist(residuals(model)) #should be normally distributed 
-plot(model)#should look fairly uniform and random. There may be some slight heteroskedasticity here, so test formally with Levene's test
-data2<-subset(data, granularity == "coarse" & !is.na(accuracy_rel)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch 
-leveneTest(residuals(model) ~ data2$congruency * data2$delay)
-leveneTest(residuals(model) ~ data2$congruency)
-leveneTest(residuals(model) ~ data2$delay)
-## everything looks good, no heteroskedasticity 
+## since heteroskedastic, use varIdent and lme 
+model<-lme(accuracy_rel ~ delay*congruency, random = ~1+CB_order|subj, data=data, na.action=na.omit, weights=varIdent(form=~1|congruency*delay))
+plot(model)
 
 ### model stats 
 anova(model)
-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
+intervals(model, level=0.95, which="fixed")
+pairwise<-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
+pairwise
+confint(pairwise, level=0.95, oldNames=FALSE, method="boot")
 
 # descriptive stats
 stats<-summarySEwithin(data=data, measurevar = "accuracy_rel", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
@@ -62,15 +69,15 @@ stats
 
 ```{r}
 # model
-model<-lmer(accuracy_gran ~ delay*congruency+(1|subj), data=data_coarse, na.action=na.omit)
-
-#check model assumptions 
-hist(residuals(model)) ## should be normally distributed, it's looking skewed though
-plot(model)#should look fairly uniform and random, looking good 
-shapiro.test(residuals(model)) #formally test normality of residuals, they are not normally distributed 
+# model<-lmer(accuracy_gran ~ delay*congruency+(1+CB_order|subj), data=data_coarse, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+# 
+# #check model assumptions 
+# hist(residuals(model)) ## should be normally distributed, it's looking skewed though
+# plot(model)#should look fairly uniform and random, looking good 
+# shapiro.test(residuals(model)) #formally test normality of residuals, they are not normally distributed 
 
 ## re-running the model transforming y variable to normalize by taking square root 
-model<-lmer(sqrt(accuracy_gran) ~ delay*congruency+(1|subj), data=data_coarse, na.action=na.omit)
+model<-lmer(sqrt(accuracy_gran) ~ delay*congruency+(1+CB_order|subj), data=data_coarse, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
 
 ## re-check new model assumptions 
 hist(residuals(model)) ## should be normally distributed, looking good now 
@@ -85,7 +92,10 @@ leveneTest(residuals(model) ~ data2$delay)
 
 # Model stats 
 anova(model)
-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
+confint(model, level=0.95, oldNames=FALSE, method="boot")
+fixef(model)
+pairwise<-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
+confint(pairwise, level=0.95, oldNames=FALSE, method="boot")
 
 # descriptive stats
 stats<-summarySEwithin(data=data_coarse, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
@@ -97,7 +107,7 @@ stats
 
 ```{r}
 # model 
-model<-lmer(accuracy_gran ~ delay*congruency + (1+delay|subj), data=data_fine, na.action=na.omit)
+model<-lmer(accuracy_gran ~ delay*congruency + (1+CB_order|subj), data=data_fine, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
 
 # check model assumptions 
 hist(residuals(model))
@@ -107,6 +117,8 @@ shapiro.test(residuals(model)) #normal
 # model stats 
 anova(model)
 emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
+confint(model, level=0.95, oldNames=FALSE, method="boot")
+fixef(model)
 
 # descriptive stats
 stats<-summarySEwithin(data=data_fine, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
@@ -198,73 +210,10 @@ ggplot(stats5[order(stats5$gran, decreasing = T),], aes(x=delay, y=accuracy_gran
 
 ```
 
-# Proportion Forgotten 
-Control analysis to check if PROPORTION of details forotten differs between congruent and incongruent 
 
-proportion forgotten = (short-long)/short
+# Supplemental Analysis 1: Proportion of ‘Don’t Know’ versus Incorrect responses. 
 
-```{r, fig.height=4.5,fig.width=4.5}
-
-# subset the data
-data_fine<-subset(data, granularity == "fine")
-data_coarse<-subset(data, granularity == "coarse")
-
-# model 
-model<-lmer(prop_forgetting ~ granularity*congruency + (1|subj), data=data, na.action=na.omit)
-hist(residuals(model)) ## very skewed 
-plot(model)#very heteroskedastic 
-
-### residuals not normal, severe negative skew
-## I tried transforming the data with inverse, log, etc and just using weights and it didnt help
-## skew is coming from some severe datapoints. 
-
-data_subset<-subset(data,include==1) ## have flagged 3 subjects with extreme datapoints in coarse congruent condition, a large increase in coarse congruent memory over time. Removing to deal with heteroskedasticity 
-
-### corrected model, need to use lme so can add weights, because it's still a bit skewed and heteroskedastic even after removing most extreme outliers 
-model<-lme(prop_forgetting ~ granularity*congruency, random= ~1|subj, weights=varIdent(form=~1|granularity*congruency), data=data_subset, na.action=na.omit)
-
-## re-check model assumptions 
-hist(residuals(model)) #much better 
-plot(model)#much better
-
-#model stats 
-anova(model)
-emmeans(model, list(pairwise ~ granularity*congruency), adjust = "none", lmer.df = "satterthwaite") 
-
-# descriptive stats
-stats<-summarySEwithin(data=data_subset, measurevar = "prop_forgetting", withinvars = c("granularity","congruency"), idvar = "subj", na.rm=TRUE)
-
-## PLOT ###
-# subset the data
-forgetting_fine<-subset(data_subset, delay=="long"& granularity == "fine")
-forgetting_coarse<-subset(data_subset, delay=="long"& granularity == "coarse")
-
-## add estiamted marginal mean to the stats dataset
-stats$upper_se<-stats$prop_forgetting + stats$se
-stats$lower_se<-stats$prop_forgetting - stats$se
-stats
-
-ggplot(stats, aes(x=congruency, y=prop_forgetting, fill=granularity)) +
-  theme_classic() +
-  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
-  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="proportion forgotten") +
-  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=18))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#5D6D7E","#85929E","#D5D8DC"), labels = c("coarse", "detailed"))+
-  scale_x_discrete(limits=c("R", "UR"), labels=c("R"="congruent", "UR"="incongruent"))+
-  scale_y_continuous(breaks = seq(-1.5,1,0.2), expand = c(0, 0), limits = c(-1.5,1))+
-  theme(plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
-
-
-
-```
-
-
-
-
-#Plotting correct, DK, and incorrect forgotten trials 
+Supplemental Analysis 1. 
 
 Coarse context (forgot coarse context and therefore the specific scene as well)
 ```{r, fig.height=4.5,fig.width=4.5}
@@ -437,7 +386,68 @@ ggplot(stats5[order(stats5$forgot, decreasing = T),], aes(x=delay, y=forgot_perc
   theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
 ```
 
+# Supplemental Analysis 2: Proportion Forgotten 
+Supplemental Analysis 2. Control analysis to check if PROPORTION of details forotten differs between congruent and incongruent. 
 
+proportion forgotten = (short-long)/short
+
+```{r, fig.height=4.5,fig.width=4.5}
+
+# subset the data
+data_fine<-subset(data, granularity == "fine")
+data_coarse<-subset(data, granularity == "coarse")
+
+# model 
+model<-lmer(prop_forgetting ~ granularity*congruency + (1+CB_order|subj), data=data, na.action=na.omit)
+hist(residuals(model)) ## very skewed 
+plot(model)#very heteroskedastic 
+
+### residuals not normal, severe negative skew
+## I tried transforming the data with inverse, log, etc and just using weights and it didnt help
+## skew is coming from some severe datapoints. 
+
+data_subset<-subset(data,include==1) ## have flagged 3 subjects with extreme datapoints in coarse congruent condition, a large increase in coarse congruent memory over time. Removing to deal with heteroskedasticity 
+
+### corrected model, need to use lme so can add weights, because it's still a bit skewed and heteroskedastic even after removing most extreme outliers 
+model<-lme(prop_forgetting ~ granularity*congruency, random= ~1+CB_order|subj, weights=varIdent(form=~1|granularity*congruency), data=data_subset, na.action=na.omit)
+
+## re-check model assumptions 
+hist(residuals(model)) #much better 
+plot(model)#much better
+
+#model stats 
+anova(model)
+emmeans(model, list(pairwise ~ granularity*congruency), adjust = "none", lmer.df = "satterthwaite") 
+
+# descriptive stats
+stats<-summarySEwithin(data=data_subset, measurevar = "prop_forgetting", withinvars = c("granularity","congruency"), idvar = "subj", na.rm=TRUE)
+
+## PLOT ###
+# subset the data
+forgetting_fine<-subset(data_subset, delay=="long"& granularity == "fine")
+forgetting_coarse<-subset(data_subset, delay=="long"& granularity == "coarse")
+
+## add estiamted marginal mean to the stats dataset
+stats$upper_se<-stats$prop_forgetting + stats$se
+stats$lower_se<-stats$prop_forgetting - stats$se
+stats
+
+ggplot(stats, aes(x=congruency, y=prop_forgetting, fill=granularity)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  labs(x="", y="proportion forgotten") +
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
+  theme(axis.text=element_text(size=18))+
+  labs(fill="") +
+  scale_fill_manual(values=c("#5D6D7E","#85929E","#D5D8DC"), labels = c("coarse", "detailed"))+
+  scale_x_discrete(limits=c("R", "UR"), labels=c("R"="congruent", "UR"="incongruent"))+
+  scale_y_continuous(breaks = seq(-1.5,1,0.2), expand = c(0, 0), limits = c(-1.5,1))+
+  theme(plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
+
+
+
+```
 
 
 

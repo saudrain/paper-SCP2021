@@ -1,0 +1,158 @@
+---
+title: "SCP RSA Object Similarity"
+output: html_notebook
+---
+ 
+Sam Audrain June 2021
+V 0.0.2
+
+This script computes statistical comparisons between patterns for correctly retrieved incongruent trials in mPFC, according to if the objects were related to each other (i.e. kitchen objects/beach objects) or not (arbitrary objects). 
+
+In all cases, objects are incongruent with the background. Congruency only varies between objects. 
+
+# Read in required packages
+```{r}
+library(nlme)
+library(lme4)
+library(ggplot2)
+library(emmeans)
+library(Rmisc)
+library(psych)
+library(car)
+library(lmerTest)
+#source("summarySEwithin2.R")
+```
+
+
+# Create dataset for stats comparisons 
+- Correlations are fisher transformed into normal distributions for statistical comparison here 
+
+```{r}
+
+# short = short delay data, long = long delay data
+delays<-c("short", "long")
+
+# R = congruent, UR = incongruent
+conds<-c("contextO", "arbO", "arbcontextO")
+
+# ROIs
+masks<-c("BNA_mPFC2")
+
+#subjects in CB1 condition, i.e. short --> long
+CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
+  
+for (delay in delays){
+  for (cond in conds){
+    for (mask in masks){
+      ###### CHANGE PATH FOR YOUR DATA ####### 
+      data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output/",cond,"_corrs_zscored_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+      colnames(data)<- c("subj", "trial", "mask", "R")
+      data$R_fish<-fisherz(data$R)
+      data$delay<-rep(delay, (nrow(data)))
+      data$cond<-rep(cond, (nrow(data)))
+      # putting counterbalancing condition to 2 for everyone since there are more people in this condition. Will swap out those in CB1 below. 
+      data$CB_order<-rep(2, nrow(data))
+      # make naming convention the same across delays for counterbalanced subjects 
+      for (r in 1:nrow(data)){
+        if (data[r,"subj"] == "P201_20181101"){
+          data[r,"subj"]<-"P101_20181029"
+        } else if (data[r,"subj"] == "S205_20181116"){
+          data[r,"subj"]<-"S105_20181113"
+        } else if (data[r,"subj"] == "S206_20181122"){
+          data[r,"subj"]<-"S106_20181119"
+        } else if (data[r,"subj"] == "S207_20181129"){
+          data[r,"subj"]<-"S107_20181126"
+        } else if (data[r,"subj"] == "S209_20190117"){
+          data[r,"subj"]<-"S109_20190114"
+        } else if (data[r,"subj"] == "S210_20190123"){
+          data[r,"subj"]<-"S110_20190120"
+        }
+      }
+      # insert counterbalancing condition 1 for relevant subjects
+      for (r in 1:nrow(data)){
+        if (is.element(data[r, "subj"], CB_SL_subj) == TRUE){
+           data[r,"CB_order"]<- 1
+        } 
+      }
+      name<-paste(delay,mask,cond,sep="_")
+      assign(name,data) #saves the mean and std under the current masks name
+    }
+  }
+}
+
+
+# within context correlation dataset
+mPFC_data_arbO<-rbind(short_BNA_mPFC2_arbO, long_BNA_mPFC2_arbO)
+
+mPFC_data_contextO<-rbind(short_BNA_mPFC2_contextO, long_BNA_mPFC2_contextO)
+
+mPFC_data<-rbind(mPFC_data_arbO, mPFC_data_contextO)
+
+# cleanup enviro 
+rm(short_BNA_mPFC2_arbcontextO, short_BNA_mPFC2_contextO, short_BNA_mPFC2_arbO, long_BNA_mPFC2_arbcontextO, long_BNA_mPFC2_contextO, long_BNA_mPFC2_arbO)
+
+```
+
+
+# Model 
+```{r, fig.height=5,fig.width=4.5}
+
+# model 
+model<-lmer(R_fish ~ cond*delay + (1+CB_order|subj), data=mPFC_data, na.action=na.omit) 
+
+hist(residuals(model))
+#check for homogeneity of variance
+plot(model)#should look fairly uniform and random. Possible heteroskedasticity? 
+data2<-subset(mPFC_data, !is.na(R_fish)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch
+leveneTest(residuals(model) ~ data2$cond * data2$delay) ## heteroskedastic
+
+# adding weights to allow variance to vary across condiiton and delay 
+model<-lme(R_fish ~ cond * delay, random = ~1+CB_order|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|cond*delay))
+hist(residuals(model)) #check residuals
+
+# model stats 
+anova(model)
+emmeans(model,list(pairwise ~ delay:cond), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 5076) 
+
+```
+
+Supplementary Fig. 6
+```{r, fig.height=5,fig.width=4.5}
+
+## Plot
+## use estimated marginal means 
+eff_interaction <-emmeans(model, specs = c("delay","cond")) #se is not for within subject data here
+eff_interaction_df <- as.data.frame(eff_interaction)
+## use within subject se 
+stats<-summarySEwithin(data=mPFC_data, measurevar = "R_fish", withinvars = c("cond","delay"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset 
+stats$emmean<-eff_interaction_df$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+stats$cond = factor(stats$cond, levels=c("contextO","arbO"))
+
+ggplot(stats, aes(x=delay, y=emmean, fill=cond)) + 
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color="black") + 
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  labs(x="", y="similarity (Fisher z)") +
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
+  theme(axis.text=element_text(size=18))+
+  labs(fill="") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels = c("context-related", "arbitrary"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,0.08,0.01), expand = c(0, 0), limits = c(0,0.08))+
+  geom_hline(yintercept=0)+
+  ggtitle("mPFC")+
+  theme(plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
+
+
+```
+
+
+
+
+
+

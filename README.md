@@ -1,10 +1,10 @@
 # The Paper
 This repository includes scripts and data for the following paper:
 
-Audrain & McAndrews, Schemas provide a scaffold for neocortical integration of new memories over time.
+Audrain & McAndrews, 2022, Schemas provide a scaffold for neocortical integration of new memories over time.
 
 # Abstract
-Memory transformation is increasingly acknowledged in theoretical accounts of systems consolidation, yet how memory quality and neural representation change over time and how schemas influence this process remains unclear.  In this multi-day fMRI study, participants encoded and retrieved schema-congruent and incongruent object-scene pairs using a paradigm that probed memory representations over 10-minutes and 72-hours. When a congruent schema was available, memory became coarser over time as representations were integrated in the medial prefrontal cortex (mPFC), aided by post-encoding coupling between the anterior hippocampus and mPFC. In the hippocampus, pattern similarity changed across 72-hours such that the posterior hippocampus represented specific details and the anterior hippocampus represented the general context of specific memories, irrespective of congruency. Our findings suggest schemas are used as a scaffold for accelerated consolidation of congruent information, and illustrate evolution in hippocampal organization of detailed contextual memory over time. 
+Memory transformation is increasingly acknowledged in theoretical accounts of systems consolidation, yet how memory quality and neural representation change over time and how schemas influence this process remains unclear. We examined the behavioral quality and neural representation of schema-congruent and incongruent object-scene pairs retrieved across 10-minutes and 72-hours using fMRI. When a congruent schema was available, memory became coarser over time, aided by post-encoding coupling between the anterior hippocampus and medial prefrontal cortex (mPFC). Only schema-congruent representations were integrated in the mPFC over time, and were organized according to schematic context. In the hippocampus, pattern similarity changed across 72-hours such that the posterior hippocampus represented specific details and the anterior hippocampus represented the general context of specific memories, irrespective of congruency. Our findings suggest schemas are used as a scaffold to facilitate neocortical integration of congruent information, and illustrate evolution in hippocampal organization of detailed contextual memory over time. 
 
 # The Software
 All scripts were coded and run in RStudio version 1.2.5033, using RNotebook. 
@@ -14,18 +14,28 @@ Rstudio can be downloaded here: https://www.rstudio.com/products/rstudio/downloa
 # The scripts
 R scripts:
 - R_SCP_behaviour_analysis.Rmd
-  - contains code for the behavioural modelling and plots of the main manuscript, as well as control proportion forgotten analysis, and plots of forgotten/incorrect trials according to each condition as outlined in the supplementary material. 
+  - contains code for the behavioural modelling and plots of the main manuscript, as well as supplementary methods 1 and 2.
 - R_SCP_connectivity_analysis.Rmd
-  - contains code for the resting state connectivity correlations with behaviour and plot, in main manuscript. 
+  - contains code for the resting state connectivity correlations with behaviour and plot, in main manuscript. As well as supplementary methods 4, 9, and 13. 
 - SCP_RSA_context_mem_analyses.Rmd
-  - contains code for modelling and plotting of the medial prefrontal cortex RSA analyses on context memory trials (main manuscript), and corresponding plots for hippocampal ROIs (supplementary material). 
+  - contains code for modelling and plotting of the medial prefrontal cortex RSA analyses on context memory trials (main manuscript), and supplementary method 5. 
 - SCP_RSA_scene_mem_analyses.Rmd
-  - contains code for modelling and plotting of the hippocampal RSA analyses on trials remembered with specificity (main manuscript), and corresponding plots for the mPFC ROI (supplementary material). 
-- R_SCP_CongruencyBias.Rmd
-  - contains code for modelling and plotting the behavioural control congruency bias analysis, as outlined in the supplementary material. 
-- R_SCP_objectsim.Rmd
-  - contains code for modelling and plotting the control RSA object pattern similarity analysis between context-related objects versus arbitrary objects, as outlined in the supplementary material.
-
+  - contains code for modelling and plotting of the hippocampal RSA analyses on trials remembered with specificity (main manuscript), and supplementary methods 11 and 13. 
+- R_SCP_supplementary_method_3.Rmd
+  - contains code for modelling and plotting supplementary method 3.
+- R_SCP_supplementary_method_6.Rmd
+  - contains code for modelling and plotting supplementary method 6.
+- R_SCP_supplementary_method_7.Rmd
+  - contains code for modelling and plotting supplementary method 7.
+- R_SCP_supplementary_method_8.Rmd
+  - contains code for modelling and plotting supplementary method 8. 
+- R_SCP_supplementary_method_10.Rmd
+  - contains code for modelling and plotting supplementary method 10. 
+- R_SCP_supplementary_method_12.Rmd
+  - contains code for modelling and plotting supplementary method 12.
+- R_SCP_supplementary_method_16.Rmd
+  - contains code for supplementary method 16. 
+  
 # The data
 ## The behavioural data
 SCP_behavioural_data.csv
@@ -81,6 +91,12 @@ SCP_connectivity_data.csv
 - fine_unrelated_long: % of incongruent trials remembered with detail across long delay (# of detailed incongruent trials across long delay / # of trials judged as incongruent at encoding)
 - coarse_related_long: % of congruent trials remembered coarsely across long delay (# of coarse congruent trials across long delay / # of trials judged as congruent at encoding)
 - coarse_unrelated_long: % of incongruent trials remembered coarsely across long delay (# of coarse incongruent trials across long delay / # of trials judged as incongruent at encoding)
+- R_wincon_short_mPFC2: congruent within-context RSA corrlations in the mPFC across the short delay (beach/kitchen, collapsed across granularity)
+- R_xcon_short_mPFC2: congruent across-context RSA corrlations in the mPFC across the short delay (beach/kitchen, collapsed across granularity)
+- R_wincon_long_mPFC2: congruent within-context RSA corrlations in the mPFC across the long delay (beach/kitchen, collapsed across granularity)
+- R_xcon_long_mPFC2: congruent across-context RSA corrlations in the mPFC across the long delay (beach/kitchen, collapsed across granularity)
+- R_wincon_minus_xcon_long_mPFC: within-context correlations minus across-context correlations in mPFC for congruent trials across the long delay 
+- R_wincon_long_minus_short_mPFC: within-context correlations minus across-context correlations in mPFC for congruent trials across the short delay 
 
 SCP_connectivity_data_long.csv
 - subj: subject number
@@ -97,9 +113,24 @@ SCP_connectivity_data_long.csv
 
 These files accompany R_SCP_connectivity_analysis.Rmd.
 
+## Data for congruency bias analysis 
+R_congruency_bias.csv
+- subj: subject number 
+- subject: long subject number 
+- delay: short or long delay 
+- unrelated_enc: number of trials the participant judged as unrelated during encoding 
+- incongruent_forgotten: number of incongruent trials forgotten 
+- total_num_catch: total number of catch trials, i.e. incongruent trials where the object was congruent with the opposing context (e.g. oven mitts paired with beach)	
+- lured_by_context: number of trials where the participant chose the incorrect but congruent context in response to a context-related object rather than the correct incongruent one for catch trials (e.g. oven mitts were paired with a beach at encoding, but they incorrectly indicated oven mitts were paired with a kitchen at retrieval)
+- arbitrary_false_alarm: number of trials where the participant chose the incorrect context in response to an arbitrary object, where both context options were unrelated (e.g. a pylon was paired with a beach at encoding, but they indicated the pylon was paired with a kitchen at retrieval)
+- prop_bias: (lured by context-arbitrary false alarm)/total number of incorrect incongruent trials
+- CB_order: counterbalancing order, subjects with 1 did short delay followed by long delay, subjects with 2 had long delay followed by short delay
+
+This file accompanies R_SCP_supplementary_method_3.Rmd
+
 ## RSA data for statistical models
 RSA_output
-- each csv file in this folder contains output from the RSA analysis
+- each csv file in this folder contains output from the RSA analysis (i.e these are pairwise correlations between trials)
 - Description of file names: [congruency_condition_delay_mask]
   - congruency:
     - R = congruent trials, UR = incongruent trials
@@ -112,19 +143,38 @@ RSA_output
     - contextO = correlations between arbitrary objects with incongruent backgrounds
     - arbO = correlations between context-related (kitchen or beach objects) objects with incongruent backgrounds 
     - arbcontextO = correlations between context-related objects and arbitrary objects with incongruent backgrounds 
+    - forgot = correlations between forgotten trials (accuracy = 0)
   - delay:
     - short = short delay trials
     - long = long delay trials
   - mask:
-    - BNA_mPFC2: mPFC
-    - right_hippo_ant: right anterior hippocampus
-    - right_hippo_post: right posterior hippocampus
+    - BNA_mPFC2 = mPFC
+    - right_hippo_ant = right anterior hippocampus
+    - right_hippo_post = right posterior hippocampus
 - Description of file contents:
   - Columns from left to right: subject identifier, correlation number, mask, Pearson's correlation
   - These are all across-run correlations, and have not been averaged in any way, or Fisher transformed
 
 
-This data accompanies the SCP_RSA_context_mem_analyses.Rmd and SCP_RSA_scene_mem_analyses.Rmd and R_SCP_objectsim.Rmd scripts.
+This data accompanies the SCP_RSA_context_mem_analyses.Rmd and SCP_RSA_scene_mem_analyses.Rmd and most of the supplemental methods .Rmd scripts. 
+
+extracted_betas_trialwise
+- each csv file in this folder contains average univariate trialwise activation within an ROI
+- Description of file names: [congruency_condition_delay_mask]
+  - congruency:
+      - R = congruent trials, UR = incongruent trials
+  - condition:
+    - act = univariate activation 
+  - delay:
+    - short = short delay trials
+    - long = long delay trials
+  - mask: 
+    - mPFC2_funcspace_thr0.95 = mPFC
+    - R_post_hippo_seg_funcspace_thr0.2 = posterior hippocampus 
+    - R_ant_hippo_seg_funcspace_thr0.2 = anterior hippocampus 
+- Description of file contents:
+  - Columns from left to right: subject identifier, trial number, mask, activation 
+
 
 # Running the scripts 
 To run these scripts, you will need to download and save the associated .csv files (described under "The Data" section) and the RSA_output folder on your local machine. 

@@ -3,8 +3,8 @@ title: "SCP RSA Modelling of Context Memory Data"
 output: html_notebook
 ---
  
-Sam Audrain June 2021 
-V 0.0.2
+Sam Audrain Feb 2022 
+V 0.0.3
 
 The correlations modelled here are context memory correlations. They are trials where participants remember the context (beach/kitchen), regardless of if they remember the specific scene (which beach/kitchen). 
 
@@ -36,6 +36,7 @@ conds<-c("R", "UR")
 
 # ROIs
 masks<-c("BNA_mPFC2", "right_hippo_ant", "right_hippo_post")
+#masks<-c("BNA_mPFC2")
 
 # within context vs across context correlations 
 grans<-c("wincon", "xcon")
@@ -126,24 +127,26 @@ rm(short_right_hippo_post_R_wincon,short_right_hippo_post_R_xcon,short_right_hip
 # mPFC 
 
 ## Initial Model fits
+
+** models failed to converge, so broke down below instead. 
 ```{r, fig.height=5,fig.width=5}
 
 # model 
-model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=mPFC_data, na.action=na.omit)
-
-# check model assumptions
-hist(residuals(model))
-plot(model)#should look fairly uniform and random. Possible heteroskedasticity?
-# test heteroskedasticity with levene's test
-data2<-subset(mPFC_data, !is.na(R_fish)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch
-leveneTest(residuals(model) ~ data2$congruency * data2$condition *data2$delay) ## heteroskedastic
-leveneTest(residuals(model) ~ data2$congruency * data2$condition) ## heteroskedastic
-leveneTest(residuals(model) ~ data2$congruency * data2$delay) ## heteroskedastic
-leveneTest(residuals(model) ~ data2$delay * data2$condition) ## heteroskedastic
+# model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=mPFC_data, na.action=na.omit)
+# 
+# # check model assumptions
+# hist(residuals(model))
+# plot(model)#should look fairly uniform and random. Possible heteroskedasticity?
+# # test heteroskedasticity with levene's test
+# data2<-subset(mPFC_data, !is.na(R_fish)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch
+# leveneTest(residuals(model) ~ data2$congruency * data2$condition *data2$delay) ## heteroskedastic
+# leveneTest(residuals(model) ~ data2$congruency * data2$condition) ## heteroskedastic
+# leveneTest(residuals(model) ~ data2$congruency * data2$delay) ## heteroskedastic
+# leveneTest(residuals(model) ~ data2$delay * data2$condition) ## heteroskedastic
 
 # re-fit the model with lme, using weights to allow variance to vary across each predictor 
 ## unfortunately, won't converge 
-#model<-lme(R_fish ~ condition*congruency*delay, random = ~1|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*congruency*delay)) 
+# model<-lme(R_fish ~ condition*congruency*delay, random = ~1|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*congruency*delay)) 
 
 ## can try robust lmm, which will take care of outliers
 #library(robustlmm)
@@ -151,19 +154,22 @@ leveneTest(residuals(model) ~ data2$delay * data2$condition) ## heteroskedastic
 ```
 
 ## Model broken down, modelling heteroskedasticity 
-*this is what we use in the paper 
 
 ### within context correlations according to congruency (congruent/incongruent) x delay (short/long)
 ```{r, fig.height=5,fig.width=5}
 # Break down model into less complex models to test hypotheses of interest, and allow heteroskedasticity. only care about within context correlations here 
 
 # model 
-model<-lme(R_fish ~ congruency*delay, random = ~1|subj, data=mPFC_data_wincon, na.action=na.omit, weights=varIdent(form=~1|congruency*delay)) 
+model<-lme(R_fish ~ congruency*delay, random = ~1+CB_order|subj, data=mPFC_data_wincon, na.action=na.omit, weights=varIdent(form=~1|congruency*delay)) 
 hist(residuals(model)) # check model residuals 
 
 # model stats
 anova(model)
-emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+intervals(model, level=0.95, which="fixed")
+pairwise<-emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+pairwise
+confint(pairwise, level=0.95, oldNames=FALSE, method="boot")
+
 
 ```
 
@@ -172,27 +178,35 @@ emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "sa
 
 ### congruent ###
 # model 
-model<-lme(R_fish ~ condition * delay, random = ~1|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*delay), subset=congruency=="R")
+model<-lme(R_fish ~ condition * delay, random = ~1+CB_order|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*delay), subset=congruency=="R")
 
 hist(residuals(model))  # check model residuals 
 
 anova(model) ## model stats 
+intervals(model, level=0.95, which="fixed")
+
 
 
 ### incongruent ###
-model<-lme(R_fish ~ condition * delay, random = ~1|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*delay), subset=congruency=="UR")
+model<-lme(R_fish ~ condition * delay, random = ~1+CB_order|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*delay), subset=congruency=="UR")
 
 hist(residuals(model))  # check model residuals 
 
 anova(model) ## model stats 
+intervals(model, level=0.95, which="fixed")
+
 
 ```
 
 ### Plot 
+
+Figure 4 of Manuscript.
+
 ```{r, fig.height=5,fig.width=5}
+
 ### plotting all data 
 # prepare for plotting, use lmer model to estimate means since lme won't converge
-model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=mPFC_data, na.action=na.omit) 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=mPFC_data, na.action=na.omit) 
 
 table<-as.data.frame(emmeans(model, list(pairwise ~ condition:congruency:delay), adjust = "none"))
 table<-subset(table, contrast == ".")
@@ -221,19 +235,17 @@ ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
   ggtitle("mPFC")+
   theme(plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
 
-
-
-
 ```
 
 
+# Supplementary Method 5: Pattern similarity in the hippocampus over time during retrieval of object-context pairs, regardless of memory granularity
 
-# Anterior hippocampmus
+## Anterior hippocampmus
 
-## Model
+### Model
 ```{r, fig.height=5,fig.width=5}
 # model 
-model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=AH_data, na.action=na.omit) 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=AH_data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead")) 
 
 # check model assumptions 
 hist(residuals(model))
@@ -243,9 +255,11 @@ plot(model)
 # model stats 
 anova(model)
 emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+
 ```
 
-## Plot
+### Plot
+Supplementary Fig. 5
 ```{r, fig.height=5,fig.width=5}
 # prepare for plotting all effects
 table<-as.data.frame(emmeans(model, list(pairwise ~ condition:congruency:delay), adjust = "none"))
@@ -276,13 +290,13 @@ ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
 ```
 
 
-# Posterior hippocampus 
+## Posterior hippocampus 
 
-## Model
+### Model
 ```{r, fig.height=5,fig.width=5}
 
 # model 
-model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=PH_data, na.action=na.omit) 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=PH_data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead")) 
 
 # check model assumptions 
 hist(residuals(model))
@@ -292,9 +306,11 @@ plot(model)
 # model stats 
 anova(model)
 emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+
 ```
 
 ## Plot
+Supplementary Fig. 5
 ```{r, fig.height=5,fig.width=5}
 
 # prepare for plotting all effects
@@ -325,5 +341,6 @@ ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
 
 
 ```
+
 
 

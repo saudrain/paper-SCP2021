@@ -1,12 +1,29 @@
 ---
-title: "SCP Supplementary Analysis 5"
+title: "Supplementary Method 8: Pattern similarity within and across contexts in the mPFC restricted to detailed memory trials."
 output: html_notebook
 ---
  
-Sam Audrain Feb 2022
-V 0.0.3
+Sam Audrain August 2022
+V 2.0
 
 Pattern similarity within and across contexts in the mPFC restricted to detailed memory trials.
+
+# Read in packages
+```{r}
+library(psych)
+library(lme4)
+library(nlme)
+library(ggplot2)
+library(emmeans)
+library(Rmisc)
+library(car)
+library(lmerTest)
+library(ggtext)
+library(MuMIn)
+
+```
+
+# Create datasets 
 
 Detailed within/across in mPFC 
 ```{r}
@@ -23,7 +40,7 @@ masks<-c("BNA_mPFC2")
 # within context vs across context correlations 
 grans<-c("wincon", "xcon")
 
-#subjects in CB1 condition, i.e. short --> long
+#subjects in CB1 counterbalancing condition, i.e. short --> long
 CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
 
 
@@ -34,7 +51,8 @@ for (delay in delays){
         ###### CHANGE PATH FOR YOUR DATA ####### 
         data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output/",cond,"_corrs_",gran,"_fine_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
         colnames(data)<- c("subj", "trial", "mask", "R")
-        data$R_fish<-fisherz(data$R)
+        data$R_fish<-fisherz(data$R) # fisher transformation
+        # add in conditions 
         data$condition<-rep(gran, (nrow(data)))
         data$delay<-rep(delay, (nrow(data)))
         data$congruency<-rep(cond, (nrow(data)))
@@ -83,80 +101,96 @@ rm(short_BNA_mPFC2_R_wincon,short_BNA_mPFC2_R_xcon,short_BNA_mPFC2_UR_wincon,sho
 
 ```
 
-
-### within context correlations according to congruency (congruent/incongruent) x delay (short/long)
+# Models
+## within context correlations according to congruency (congruent/incongruent) x delay (short/long)
 ```{r, fig.height=5,fig.width=5}
-# Break down model into less complex models to test hypotheses of interest, and allow heteroskedasticity. only care about within context correlations here 
 
 # model 
 model<-lme(R_fish ~ congruency*delay, random = ~1+CB_order|subj, data=mPFC_data_wincon, na.action=na.omit, weights=varIdent(form=~1|congruency*delay)) 
+
+# check assumptions 
 hist(residuals(model)) # check model residuals 
 plot(model)
 
 # model stats
 anova(model)
-emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+intervals(model, level=0.95, which="fixed")
+r.squaredGLMM(model)
 
+# post hocs 
+pairwise<-emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+pairwise
+confint(pairwise, level=0.95, oldNames=FALSE, method="boot")
 
 ```
 
-### condition (within/across context correlations) x delay (short/long) for each congruency (congruent/incongruent)
-```{r, fig.height=5,fig.width=5}
+## condition (within/across context correlations) x delay (short/long) for each congruency (congruent/incongruent)
 
-### congruent ###
+### congruent 
+```{r}
+
 # model 
 model<-lme(R_fish ~ condition * delay, random = ~1+CB_order|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*delay), subset=congruency=="R")
 
+# check assumptions 
 hist(residuals(model))  # check model residuals 
 
+# model stats 
 anova(model) ## model stats 
+intervals(model, level=0.95, which="fixed")
+r.squaredGLMM(model)
 
+```
 
-### incongruent ###
+### incongruent
+```{r}
+
+# model 
 model<-lme(R_fish ~ condition * delay, random = ~1+CB_order|subj, data=mPFC_data, na.action=na.omit, weights=varIdent(form=~1|condition*delay), subset=congruency=="UR")
 
+# check assumptions
 hist(residuals(model))  # check model residuals 
 
+# model stats 
 anova(model) ## model stats 
+intervals(model, level=0.95, which="fixed")
+r.squaredGLMM(model)
 
 ```
 
 # Plots
 
 Supplementary Fig.8
-
 ```{r, fig.height=5,fig.width=5}
 
-### plotting all data 
+# summarize data 
 # prepare for plotting, use lmer model to estimate means since lme won't converge
 model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=mPFC_data, na.action=na.omit) 
 
 table<-as.data.frame(emmeans(model, list(pairwise ~ condition:congruency:delay), adjust = "none"))
-table<-subset(table, contrast == ".")
+table<-subset(table, X1 == ".")
 
 stats<-summarySEwithin(data=mPFC_data, measurevar = "R_fish", withinvars = c("delay","congruency","condition"), idvar = "subj", na.rm=TRUE)
-## add estiamted marginal mean to the stats dataset
+## add estiamted marginal mean to the stats dataset, and proper se 
 stats$emmean<-table$emmean
 stats$upper_se<-stats$emmean + stats$se
 stats$lower_se<-stats$emmean - stats$se
 stats
 
+# plot 
 ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
   theme_classic() +
   geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
   geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="similarity (Fisher z)") +
-  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=18))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
   labs(fill="") +
   scale_fill_manual(values=c("#2C3E50","#5D6D7E","#85929E","#D5D8DC"), labels = c("congruent within", "congruent across", "incongruent within","incongruent across"))+
   scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
   scale_y_continuous(breaks = seq(0,0.1,0.01),expand = c(0, 0), limits = c(0,0.1))+
-  #scale_y_continuous(breaks = seq(0,0.08,0.01),expand = c(0, 0), limits = c(0,0.08))+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
   geom_hline(yintercept=0)+
-  ggtitle("")+
-  ggtitle("mPFC")+
-  theme(plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
+  ggtitle("mPFC")
+
 
 
 ```

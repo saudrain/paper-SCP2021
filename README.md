@@ -233,3 +233,5 @@ The data included in this repository is licensed under the Creative Commons Attr
 
 # Inquiries
 Please contact samanthaaudrain at gmail dot com for questions, comments, or bugs.
+
+[![DOI](https://zenodo.org/badge/317323532.svg)](https://zenodo.org/badge/latestdoi/317323532)

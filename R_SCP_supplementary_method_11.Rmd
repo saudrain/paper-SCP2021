@@ -49,7 +49,7 @@ for (delay in delays){
     for (gran in grans){
       for (mask in masks){
         ###### CHANGE PATH FOR YOUR DATA ####### 
-        data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_V8_cat/",cond,"_corrs_",gran,"_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+        data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output_cat/",cond,"_corrs_",gran,"_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
         colnames(data)<- c("subj", "trial", "mask", "R", "cat")
         data$R_fish<-fisherz(data$R) # fisher transformation
         # add condition information 

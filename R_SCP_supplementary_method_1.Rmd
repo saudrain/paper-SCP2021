@@ -1,0 +1,147 @@
+---
+title: "Supplemental Method 1: Proportion of ‘Don’t Know’ versus Incorrect responses. "
+output: html_notebook
+---
+
+Sam Audrain August 2022
+V 2.0
+ 
+# Packages
+```{r}
+library(ggplot2)
+library(Rmisc)
+```
+
+# Read in and subset the data
+```{r}
+
+###### CHANGE PATH FOR YOUR DATA #######
+data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/SCP_behavioural_data.csv")
+data$CB_order<-as.factor(data$CB_order)
+
+# subset the data
+data_fine<-subset(data, granularity == "fine")
+data_coarse<-subset(data, granularity == "coarse")
+
+```
+
+
+# Supplementary Figure 1
+
+## Context memory
+### Don't know (responded "don't know" to context question)
+```{r, fig.height=4.5,fig.width=4.5}
+
+# summarize for plot 
+stats<-summarySEwithin(data=data_coarse, measurevar = "DK_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+# add SE and condition information 
+stats$upper_se<-stats$DK_perc + stats$se
+stats$lower_se<-stats$DK_perc - stats$se
+stats$forgot<-rep("DK_perc", length(stats$DK_perc))
+colnames(stats)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
+
+# plot 
+ggplot(stats, aes(x=delay, y=forgot_perc, fill=congruency)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  geom_point(data=data_coarse, position=position_jitterdodge(jitter.width=0.5, dodge.width = 0.8), pch=1, aes(delay, DK_perc, group=congruency), show.legend = F, size = 2)+
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank(), axis.text=element_text(size=18), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom") +
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("congruent","incongruent"))+ 
+  labs(x= "", y="% forgotten (of total trials)", fill="") +
+  ggtitle(" ")
+
+```
+
+### Incorrect (chose incorrect context)
+```{r, fig.height=4.5,fig.width=4.5}
+
+# summarize for plot 
+stats2<-summarySEwithin(data=data_coarse, measurevar = "incorrect_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+# add SE and condition information 
+stats2$upper_se<-stats2$incorrect_perc + stats2$se
+stats2$lower_se<-stats2$incorrect_perc - stats2$se
+stats2$forgot<-rep("incorrect_perc", length(stats2$incorrect_perc))
+colnames(stats2)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
+
+# plot 
+ggplot(stats2, aes(x=delay, y=forgot_perc, fill=congruency)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  geom_point(data=data_coarse, position=position_jitterdodge(jitter.width=0.5, dodge.width = 0.8), pch=1, aes(delay, incorrect_perc, group=congruency), show.legend = F, size = 2)+
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank(), axis.text=element_text(size=18), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("congruent","incongruent"))+ ## manuscript 
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  labs(x= "", y="% forgotten (of total trials)", fill="") +
+  ggtitle(" ")
+
+```
+
+## Scene memory 
+### Don't know (answered context question correct, answered "don't know" to scene question)
+```{r, fig.height=4.5,fig.width=4.5}
+
+# summarize for plot 
+stats<-summarySEwithin(data=data_fine, measurevar = "DK_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+# add SE and condition information 
+stats$upper_se<-stats$DK_perc + stats$se
+stats$lower_se<-stats$DK_perc - stats$se
+stats$forgot<-rep("DK_perc", length(stats$DK_perc))
+colnames(stats)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
+
+# plot 
+ggplot(stats, aes(x=delay, y=forgot_perc, fill=congruency)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  geom_point(data=data_fine, position=position_jitterdodge(jitter.width=0.5, dodge.width = 0.8), pch=1, aes(delay, DK_perc, group=congruency), show.legend = F, size = 2)+
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank(), axis.text=element_text(size=18), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("congruent","incongruent"))+ ## manuscript 
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  labs(x= "", y="% forgotten (of total trials)", fill="") +
+  ggtitle(" ")
+
+```
+
+### Incorrect (answered context question correct, chose the incorrect scene)
+```{r, fig.height=4.5,fig.width=4.5}
+
+# summarize for plot 
+stats2<-summarySEwithin(data=data_fine, measurevar = "incorrect_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+# add SE and condition information 
+stats2$upper_se<-stats2$incorrect_perc + stats2$se
+stats2$lower_se<-stats2$incorrect_perc - stats2$se
+stats2$forgot<-rep("incorrect_perc", length(stats2$incorrect_perc))
+colnames(stats2)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
+
+# plot 
+ggplot(stats2, aes(x=delay, y=forgot_perc, fill=congruency)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  geom_point(data=data_fine, position=position_jitterdodge(jitter.width=0.5, dodge.width = 0.8), pch=1, aes(delay, incorrect_perc, group=congruency), show.legend = F, size = 2)+
+ theme(axis.title = element_text(size=20), axis.ticks.x=element_blank(), axis.text=element_text(size=18), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("congruent","incongruent"))+ ## manuscript 
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  labs(x= "", y="% forgotten (of total trials)", fill="") +
+  ggtitle(" ")
+
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

@@ -1,0 +1,69 @@
+---
+title: "Supplementary Method 4: Comparison of connectivity-memory correlations"
+output: html_notebook
+---
+
+Sam Audrain August 2022
+V 2.0
+
+# Packages and functions
+```{r}
+library(dplyr)
+library(ggplot2)
+library(psych)
+
+```
+ 
+# Read in data
+```{r}
+
+###### CHANGE PATHS FOR YOUR DATA #######
+data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/SCP_connectivity_data.csv")
+
+data2<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/SCP_connectivity_data_long.csv")
+
+
+```
+
+# Run Williams tests 
+```{r}
+
+attach(data)
+
+#paired correlation tests 
+
+#testing diff beteen congruent coarse and fine 
+cor.test(post_pre_AH_mPFC, coarse_related_long, alternative = "greater") 
+cor.test(post_pre_AH_mPFC, fine_related_long, alternative = "two.sided")
+cor.test(coarse_related_long, fine_related_long, alternative = "greater") 
+paired.r(0.456, -0.241, yz=-0.086, n=17) #marginal 
+
+#testing difference between congruent and incongruent coarse 
+cor.test(post_pre_AH_mPFC, coarse_related_long, alternative = "greater") 
+cor.test(post_pre_AH_mPFC, coarse_unrelated_long, alternative = "two.sided")
+cor.test(coarse_related_long, coarse_unrelated_long, alternative = "greater") 
+paired.r(0.456, 0.194, yz=0.296, n=17) #not sig
+
+#testing difference between congruent coarse and incongruent detailed 
+cor.test(post_pre_AH_mPFC, coarse_related_long, alternative = "greater")
+cor.test(post_pre_AH_mPFC, fine_unrelated_long, alternative = "two.sided")
+cor.test(coarse_related_long, fine_unrelated_long, alternative = "greater") 
+paired.r(0.456, -0.40, yz=0.11, n=17) #sig 
+
+```
+
+# Plot 
+Supplementary Fig.4
+```{r, fig.height=6,fig.width=6.5}
+
+data2 %>%
+  ggplot(aes(y = accuracy_gran, x = post_pre_AH_mPFC, color=cond)) +
+  geom_smooth(method = lm, level = 0.95) +
+  theme_classic() +
+  theme(text = element_text(size = 18), axis.text.x = element_text(size=18), axis.text.y = element_text(size=18), plot.title =     element_text(face="bold", hjust=0.5, size=22), legend.position="right")+
+  scale_color_manual(values=c("#081d58","#2c7fb8","#006837","#41ab5d"),labels=c("coarse congruent","detailed congruent","coarse incongruent","detailed incongruent"))+
+  guides(shape = FALSE, size = FALSE)+
+  labs(y = "% retrieved",
+       x = "ant hipp - mPFC connectivity (post-pre)",
+       title = "")
+```

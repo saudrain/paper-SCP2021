@@ -1,46 +1,57 @@
 ---
-title: "SCP Congruency Bias Analysis"
+title: "Supplementary Method 3: Congruency bias analysis"
 output: html_notebook
 ---
 
-Sam Audrain June 2021 
-V 0.0.2
- 
-Read in Packages and Scripts
+Sam Audrain August 2022
+V 2.0
+
+# Read in Packages and Functions
 ```{r}
-library(dplyr)
-library(nlme)
+
+library(lme4)
 library(ggplot2)
 library(emmeans)
 library(car)
 library(lmerTest)
+library(MuMIn)
 
 source("summarySEwithin2.R")
 
 ```
 
+# Read in the data 
+```{r}
 
-Models
+###### CHANGE PATH FOR YOUR DATA #######
+data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/R_congruency_bias.csv")
+
+```
+
+
+# Models
 
 prop_bias = (lured by context-arbitraryFA)/total number of incorrect incongruent trials
 
 ```{r, fig.height=5,fig.width=4.5}
 
-###### CHANGE PATH FOR YOUR DATA #######
-data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/R_congruency_bias.csv")
-
-### Model 
+# model 
 model<-lmer(prop_bias ~ delay + (1|subj), data=data, na.action=na.omit)
 
-### Assessing model fit 
+# check assumptions 
 hist(residuals(model)) # should look normal 
 #check for homogeneity of variance
 #plot(model)#should look fairly uniform and random. It looks like there's a correlation but this is apparently ok: https://stats.stackexchange.com/questions/5235/what-is-the-expected-correlation-between-residual-and-the-dependent-variable? 
 data2<-subset(data, !is.na(prop_bias)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch
 leveneTest(residuals(model) ~ data$delay) ## check for heteroskedasticity suggests ok 
 
-### Model Stats
+# stats 
 anova(model)
+r.squaredGLMM(model)
+confint(model, level=0.95, oldNames=FALSE, method="boot")
+fixef(model)
+
+# post hoc tests 
 emmeans(model, list(pairwise ~ delay), adjust = "none", lmer.df = "satterthwaite") #pairwise comparisons 
 
 # one sample t tests
@@ -54,38 +65,27 @@ t.test(data_long$prop_bias, mu = 0, alternative = "two.sided")
 Supplementary Fig. 3
 ```{r, fig.height=5,fig.width=4.5}
 
-## Prepare to plot 
-## use estimated marginal means 
+# prepare to plot 
+## use estimated marginal means from the model 
 eff_interaction <-emmeans(model, specs = c("delay")) #se is not for within subject data here
 eff_interaction_df <- as.data.frame(eff_interaction)
 ## use within subject se 
 stats<-summarySEwithin2(data=data, measurevar = "prop_bias", withinvars = c("delay"), idvar = "subj", na.rm=TRUE)
-## add estiamted marginal mean to the stats dataset 
+## add estiamted marginal mean to the stats dataset, and proper se 
 stats$upper_se<-stats$prop_bias + stats$se
 stats$lower_se<-stats$prop_bias - stats$se
 stats
 
-### Plot
+# plot 
 ggplot(data, aes(x=delay, y=prop_bias)) + 
   theme_classic() +
   geom_boxplot(outlier.shape=NA) +
   geom_jitter(shape=16, position=position_jitter(0.2), size = 4) +
-labs(x="", y="average congruency bias") +
-  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=18))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
   scale_y_continuous(breaks = seq(-0.5,1.1,0.1), limits = c(-0.5,1.1))+
   scale_x_discrete(limits=c("short", "long"), labels=c("short" = "short", "long" = "long"))+
-  labs(fill="")
+  labs(x="", y="average congruency bias", fill="")
   
   
-
 ```
-
-
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 

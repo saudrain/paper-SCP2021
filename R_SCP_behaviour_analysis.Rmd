@@ -3,11 +3,12 @@ title: "SCP Behavioural Analysis"
 output: html_notebook
 ---
 
-Sam Audrain June 2021 
-V 0.0.2
+Sam Audrain August 2022
+V 2.0
  
 # Packages
 ```{r}
+
 library(nlme)
 library(ggplot2)
 library(emmeans)
@@ -15,9 +16,8 @@ library(Rmisc)
 library(lme4)
 library(car)
 library(lmerTest)
-library(report)
+library(MuMIn)
 
-source("summarySEwithin2.R")
 ```
 
 # Read in and subset the data
@@ -34,9 +34,10 @@ data_coarse<-subset(data, granularity == "coarse")
 ```
 
 
-# Investigating accuracy as a function of congruency and delay (collapsed across granularity)
+# Total accuracy (collapsed across granularity)
 
 ```{r}
+####### initital model fit ####### 
 # model 
 # model <-lmer(accuracy_rel ~ delay*congruency + (1+CB_order|subj), data=data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
 # 
@@ -48,13 +49,19 @@ data_coarse<-subset(data, granularity == "coarse")
 # leveneTest(residuals(model) ~ data2$congruency)
 # leveneTest(residuals(model) ~ data2$delay)
 
+###### final model fit ########
 ## since heteroskedastic, use varIdent and lme 
 model<-lme(accuracy_rel ~ delay*congruency, random = ~1+CB_order|subj, data=data, na.action=na.omit, weights=varIdent(form=~1|congruency*delay))
+
+# check heteroskedasticity
 plot(model)
 
-### model stats 
+# model stats 
 anova(model)
 intervals(model, level=0.95, which="fixed")
+r.squaredGLMM(model)
+
+# post hoc tests 
 pairwise<-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
 pairwise
 confint(pairwise, level=0.95, oldNames=FALSE, method="boot")
@@ -65,21 +72,24 @@ stats
 
 ```
 
-# Investigating coarse trial accuracy as a function of congruency and delay
+# Coarse trial accuracy 
 
+## Models 
 ```{r}
+####### initital model fit ####### 
 # model
 # model<-lmer(accuracy_gran ~ delay*congruency+(1+CB_order|subj), data=data_coarse, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
 # 
 # #check model assumptions 
 # hist(residuals(model)) ## should be normally distributed, it's looking skewed though
-# plot(model)#should look fairly uniform and random, looking good 
+# plot(model)#should look fairly uniform and random
 # shapiro.test(residuals(model)) #formally test normality of residuals, they are not normally distributed 
 
-## re-running the model transforming y variable to normalize by taking square root 
+###### final model fit ########
+# re-running the model transforming y variable to normalize by taking square root 
 model<-lmer(sqrt(accuracy_gran) ~ delay*congruency+(1+CB_order|subj), data=data_coarse, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
 
-## re-check new model assumptions 
+# re-check new model assumptions 
 hist(residuals(model)) ## should be normally distributed, looking good now 
 plot(model)#should look fairly uniform and random, looking ok but test for heteroskedasticity 
 shapiro.test(residuals(model)) #residuals are normal now 
@@ -90,10 +100,13 @@ leveneTest(residuals(model) ~ data2$congruency)
 leveneTest(residuals(model) ~ data2$delay)
 ## looking good, can proceed 
 
-# Model stats 
+# model stats 
 anova(model)
 confint(model, level=0.95, oldNames=FALSE, method="boot")
+r.squaredGLMM(model)
 fixef(model)
+
+# post hoc tests 
 pairwise<-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
 confint(pairwise, level=0.95, oldNames=FALSE, method="boot")
 
@@ -103,8 +116,40 @@ stats
 
 ```
 
-## Investigating fine/detailed trial accuracy as a function of congruency and delay
+## Plot 
 
+Figure 2 of manuscript. 
+```{r, fig.height=4.5,fig.width=4.5}
+
+# summarize the data 
+stats2<-summarySEwithin(data=data_coarse, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
+# add se 
+stats2$upper_se<-stats2$accuracy_gran + stats2$se
+stats2$lower_se<-stats2$accuracy_gran - stats2$se
+stats2$gran<-rep("coarse", length(stats2$accuracy_gran))
+
+# plot 
+ggplot(stats2, aes(x=delay, y=accuracy_gran, fill=congruency)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  geom_point(data=data_coarse, position=position_jitterdodge(jitter.width=0.5, dodge.width = 0.8), pch=1, aes(delay, accuracy_gran, group=congruency, fill=factor(congruency)), show.legend = F, size = 2)+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("congruent","incongruent"))+ ## manuscript 
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  labs(x= "", y="% of total trials", fill="") +
+  ggtitle("coarse")
+
+#ggsave(path = "~/Downloads/", width = 4.5, height = 4.5, device='tiff', filename = "fig2", dpi=500)
+
+```
+
+
+# Detailed trial accuracy 
+
+## Models 
 ```{r}
 # model 
 model<-lmer(accuracy_gran ~ delay*congruency + (1+CB_order|subj), data=data_fine, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
@@ -116,9 +161,9 @@ shapiro.test(residuals(model)) #normal
 
 # model stats 
 anova(model)
-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite") 
 confint(model, level=0.95, oldNames=FALSE, method="boot")
 fixef(model)
+r.squaredGLMM(model)
 
 # descriptive stats
 stats<-summarySEwithin(data=data_fine, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
@@ -126,328 +171,38 @@ stats
 
 ```
 
+## Plot 
 
-# Plotting behavioural data
+Figure 2 of manuscript. 
 ```{r, fig.height=4.5,fig.width=4.5}
 
-########## Get the desired error bars ##########
-
-# fine summary 
+# summarize the data 
 stats<-summarySEwithin(data=data_fine, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-stats$upper_se<-NaN
-stats$lower_se<-NaN
+# add se 
+stats$upper_se<-stats$accuracy_gran + stats$se
+stats$lower_se<-stats$accuracy_gran - stats$se
 stats$gran<-rep("fine", length(stats$accuracy_gran))
 
-# coarse summary
-stats2<-summarySEwithin(data=data_coarse, measurevar = "accuracy_gran", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-stats2$upper_se<-NaN
-stats2$lower_se<-NaN
-stats2$gran<-rep("coarse", length(stats2$accuracy_gran))
-
-#combine the datasets 
-stats3<-rbind(stats2,stats)
-
-#get error bars from total related and unrelated 
-stats1<-summarySEwithin(data=data, measurevar = "accuracy_rel", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-
-#add correct error bars (which represent se collapsed across granularity) to the datset 
-# R short 
-stats3[7,"upper_se"]<- stats3[7,"accuracy_gran"] + stats3[3,"accuracy_gran"] + stats1[3,"se"]
-stats3[7,"lower_se"]<- stats3[7,"accuracy_gran"] + stats3[3,"accuracy_gran"] - stats1[3,"se"]
-
-#UR short
-stats3[8,"upper_se"]<- stats3[8,"accuracy_gran"] + stats3[4,"accuracy_gran"] + stats1[4,"se"]
-stats3[8,"lower_se"]<- stats3[8,"accuracy_gran"] + stats3[4,"accuracy_gran"] - stats1[4,"se"]
-
-#R long
-stats3[5,"upper_se"]<- stats3[5,"accuracy_gran"] + stats3[1,"accuracy_gran"] + stats1[1,"se"]
-stats3[5,"lower_se"]<- stats3[5,"accuracy_gran"] + stats3[1,"accuracy_gran"] - stats1[1,"se"]
-
-#UR long
-stats3[6,"upper_se"]<- stats3[6,"accuracy_gran"] + stats3[2,"accuracy_gran"] + stats1[2,"se"]
-stats3[6,"lower_se"]<- stats3[6,"accuracy_gran"] + stats3[2,"accuracy_gran"] - stats1[2,"se"]
-
-
-# subset into related and unrelated to plot separately 
-stats4<-subset(stats3, congruency == "R")
-stats5<-subset(stats3, congruency == "UR") 
-
-
-
-########## Plot the data ##########
-
-### congruent plot 
-ggplot(stats4[order(stats4$gran, decreasing = T),], aes(x=delay, y=accuracy_gran, fill=factor(gran, levels=c("fine","coarse")))) + 
-  theme_classic() +
-  geom_bar(stat = "identity", position = "stack", width = 0.6, color="black") + 
-  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="% correct") +
-  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=16))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("detailed","coarse"))+ ## for manuscript
-  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
-  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
-  geom_hline(yintercept=0)+
-  ggtitle("congruent")+
-  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
-
-### incongruent plot 
-ggplot(stats5[order(stats5$gran, decreasing = T),], aes(x=delay, y=accuracy_gran, fill=factor(gran, levels=c("fine","coarse")))) + 
-  theme_classic() +
-  geom_bar(stat = "identity", position = "stack", width = 0.6,color="black") + 
-  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="% correct") +
-  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=16))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("detailed","coarse"))+ ## manuscript 
-  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
-  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
-  geom_hline(yintercept=0)+
-  ggtitle("incongruent")+
-  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
-
-```
-
-
-# Supplemental Analysis 1: Proportion of ‘Don’t Know’ versus Incorrect responses. 
-
-Supplemental Analysis 1. 
-
-Coarse context (forgot coarse context and therefore the specific scene as well)
-```{r, fig.height=4.5,fig.width=4.5}
-########## Get the desired error bars ##########
-
-# fine summary DK
-stats<-summarySEwithin(data=data_coarse, measurevar = "DK_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-stats$upper_se<-NaN
-stats$lower_se<-NaN
-stats$forgot<-rep("DK_perc", length(stats$DK_perc))
-colnames(stats)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
-
-# fine summary incorrect
-stats2<-summarySEwithin(data=data_coarse, measurevar = "incorrect_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-stats2$upper_se<-NaN
-stats2$lower_se<-NaN
-stats2$forgot<-rep("incorrect_perc", length(stats2$incorrect_perc))
-colnames(stats2)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
-
-
-#combine the datasets 
-stats3<-rbind(stats2,stats)
-
-#get error bars from total related and unrelated 
-stats1<-summarySEwithin(data=data, measurevar = "total_forgot_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-
-#add correct error bars (which represent se collapsed across granularity) to the datset 
-# R short 
-stats3[7,"upper_se"]<- stats3[7,"forgot_perc"] + stats3[3,"forgot_perc"] + stats1[3,"se"]
-stats3[7,"lower_se"]<- stats3[7,"forgot_perc"] + stats3[3,"forgot_perc"] - stats1[3,"se"]
-
-#UR short
-stats3[8,"upper_se"]<- stats3[8,"forgot_perc"] + stats3[4,"forgot_perc"] + stats1[4,"se"]
-stats3[8,"lower_se"]<- stats3[8,"forgot_perc"] + stats3[4,"forgot_perc"] - stats1[4,"se"]
-
-#R long
-stats3[5,"upper_se"]<- stats3[5,"forgot_perc"] + stats3[1,"forgot_perc"] + stats1[1,"se"]
-stats3[5,"lower_se"]<- stats3[5,"forgot_perc"] + stats3[1,"forgot_perc"] - stats1[1,"se"]
-
-#UR long
-stats3[6,"upper_se"]<- stats3[6,"forgot_perc"] + stats3[2,"forgot_perc"] + stats1[2,"se"]
-stats3[6,"lower_se"]<- stats3[6,"forgot_perc"] + stats3[2,"forgot_perc"] - stats1[2,"se"]
-
-
-# subset into related and unrelated to plot separately 
-stats4<-subset(stats3, congruency == "R")
-stats5<-subset(stats3, congruency == "UR")
-
-########## Plot the data ##########
-
-### congruent plot 
-ggplot(stats4[order(stats4$forgot, decreasing = T),], aes(x=delay, y=forgot_perc, fill=factor(forgot, levels=c("DK_perc","incorrect_perc")))) + 
-  theme_classic() +
-  geom_bar(stat = "identity", position = "stack", width = 0.6, color="black") + 
-  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="% forgotten") + #% of congruent trials at encoding forgotten 
-  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=16))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("don't know","incorrect"))+ ## for manuscript
-  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
-  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
-  geom_hline(yintercept=0)+
-  ggtitle(" ")+
-  #ggtitle("congruent context")+
-  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
-
-### incongruent plot 
-ggplot(stats5[order(stats5$forgot, decreasing = T),], aes(x=delay, y=forgot_perc, fill=factor(forgot, levels=c("DK_perc","incorrect_perc")))) + 
-  theme_classic() +
-  geom_bar(stat = "identity", position = "stack", width = 0.6,color="black") + 
-  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="% forgotten") +
-  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=16))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("don't know","incorrect"))+ ## manuscript 
-  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
-  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
-  geom_hline(yintercept=0)+
-  ggtitle(" ")+
-  #ggtitle("incongruent context")+
-  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
-
-```
-
-
-
-Scenes (answered coarse context correct, got scene incorrect)
-```{r, fig.height=4.5,fig.width=4.5}
-########## Get the desired error bars ##########
-
-# fine summary DK
-stats<-summarySEwithin(data=data_fine, measurevar = "DK_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-stats$upper_se<-NaN
-stats$lower_se<-NaN
-stats$forgot<-rep("DK_perc", length(stats$DK_perc))
-colnames(stats)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
-
-# fine summary incorrect
-stats2<-summarySEwithin(data=data_fine, measurevar = "incorrect_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-stats2$upper_se<-NaN
-stats2$lower_se<-NaN
-stats2$forgot<-rep("incorrect_perc", length(stats2$incorrect_perc))
-colnames(stats2)<-c("delay", "congruency", "N", "forgot_perc", "sd", "se", "ci", "upper_se", "lower_se", "forgot")
-
-
-#combine the datasets 
-stats3<-rbind(stats2,stats)
-
-#get error bars from total related and unrelated 
-stats1<-summarySEwithin(data=data, measurevar = "total_forgot_perc", withinvars = c("delay","congruency"), idvar = "subj", na.rm=TRUE)
-
-#add correct error bars (which represent se collapsed across granularity) to the datset 
-# R short 
-stats3[7,"upper_se"]<- stats3[7,"forgot_perc"] + stats3[3,"forgot_perc"] + stats1[3,"se"]
-stats3[7,"lower_se"]<- stats3[7,"forgot_perc"] + stats3[3,"forgot_perc"] - stats1[3,"se"]
-
-#UR short
-stats3[8,"upper_se"]<- stats3[8,"forgot_perc"] + stats3[4,"forgot_perc"] + stats1[4,"se"]
-stats3[8,"lower_se"]<- stats3[8,"forgot_perc"] + stats3[4,"forgot_perc"] - stats1[4,"se"]
-
-#R long
-stats3[5,"upper_se"]<- stats3[5,"forgot_perc"] + stats3[1,"forgot_perc"] + stats1[1,"se"]
-stats3[5,"lower_se"]<- stats3[5,"forgot_perc"] + stats3[1,"forgot_perc"] - stats1[1,"se"]
-
-#UR long
-stats3[6,"upper_se"]<- stats3[6,"forgot_perc"] + stats3[2,"forgot_perc"] + stats1[2,"se"]
-stats3[6,"lower_se"]<- stats3[6,"forgot_perc"] + stats3[2,"forgot_perc"] - stats1[2,"se"]
-
-
-# subset into related and unrelated to plot separately 
-stats4<-subset(stats3, congruency == "R")
-stats5<-subset(stats3, congruency == "UR")
-
-########## Plot the data ##########
-
-### congruent plot 
-ggplot(stats4[order(stats4$forgot, decreasing = T),], aes(x=delay, y=forgot_perc, fill=factor(forgot, levels=c("DK_perc","incorrect_perc")))) + 
-  theme_classic() +
-  geom_bar(stat = "identity", position = "stack", width = 0.6, color="black") + 
-  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="% forgotten (context correct)") +
-  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=16))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("don't know","incorrect"))+ ## for manuscript
-  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
-  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
-  geom_hline(yintercept=0)+
-  ggtitle(" ")+
-  #ggtitle("congruent scenes")+
-  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
-
-### incongruent plot 
-ggplot(stats5[order(stats5$forgot, decreasing = T),], aes(x=delay, y=forgot_perc, fill=factor(forgot, levels=c("DK_perc","incorrect_perc")))) + 
-  theme_classic() +
-  geom_bar(stat = "identity", position = "stack", width = 0.6,color="black") + 
-  geom_errorbar(width = .0, position = "identity", aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="% forgotten (context correct)") +
-  theme(axis.title = element_text(size=18), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=16))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("don't know","incorrect"))+ ## manuscript 
-  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
-  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
-  geom_hline(yintercept=0)+
-  ggtitle(" ")+
-  # ggtitle("incongruent scenes")+
-  theme(plot.title = element_text(size=20, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
-```
-
-# Supplemental Analysis 2: Proportion Forgotten 
-Supplemental Analysis 2. Control analysis to check if PROPORTION of details forotten differs between congruent and incongruent. 
-
-proportion forgotten = (short-long)/short
-
-```{r, fig.height=4.5,fig.width=4.5}
-
-# subset the data
-data_fine<-subset(data, granularity == "fine")
-data_coarse<-subset(data, granularity == "coarse")
-
-# model 
-model<-lmer(prop_forgetting ~ granularity*congruency + (1+CB_order|subj), data=data, na.action=na.omit)
-hist(residuals(model)) ## very skewed 
-plot(model)#very heteroskedastic 
-
-### residuals not normal, severe negative skew
-## I tried transforming the data with inverse, log, etc and just using weights and it didnt help
-## skew is coming from some severe datapoints. 
-
-data_subset<-subset(data,include==1) ## have flagged 3 subjects with extreme datapoints in coarse congruent condition, a large increase in coarse congruent memory over time. Removing to deal with heteroskedasticity 
-
-### corrected model, need to use lme so can add weights, because it's still a bit skewed and heteroskedastic even after removing most extreme outliers 
-model<-lme(prop_forgetting ~ granularity*congruency, random= ~1+CB_order|subj, weights=varIdent(form=~1|granularity*congruency), data=data_subset, na.action=na.omit)
-
-## re-check model assumptions 
-hist(residuals(model)) #much better 
-plot(model)#much better
-
-#model stats 
-anova(model)
-emmeans(model, list(pairwise ~ granularity*congruency), adjust = "none", lmer.df = "satterthwaite") 
-
-# descriptive stats
-stats<-summarySEwithin(data=data_subset, measurevar = "prop_forgetting", withinvars = c("granularity","congruency"), idvar = "subj", na.rm=TRUE)
-
-## PLOT ###
-# subset the data
-forgetting_fine<-subset(data_subset, delay=="long"& granularity == "fine")
-forgetting_coarse<-subset(data_subset, delay=="long"& granularity == "coarse")
-
-## add estiamted marginal mean to the stats dataset
-stats$upper_se<-stats$prop_forgetting + stats$se
-stats$lower_se<-stats$prop_forgetting - stats$se
-stats
-
-ggplot(stats, aes(x=congruency, y=prop_forgetting, fill=granularity)) +
+# plot 
+ggplot(stats, aes(x=delay, y=accuracy_gran, fill=congruency)) +
   theme_classic() +
   geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
   geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="proportion forgotten") +
-  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=18))+
-  labs(fill="") +
-  scale_fill_manual(values=c("#5D6D7E","#85929E","#D5D8DC"), labels = c("coarse", "detailed"))+
-  scale_x_discrete(limits=c("R", "UR"), labels=c("R"="congruent", "UR"="incongruent"))+
-  scale_y_continuous(breaks = seq(-1.5,1,0.2), expand = c(0, 0), limits = c(-1.5,1))+
-  theme(plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
+  geom_point(data=data_fine, position=position_jitterdodge(jitter.width=0.25, dodge.width = 0.8), pch=1, aes(delay, accuracy_gran, group=congruency), show.legend = F, size = 2)+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom") +
+  scale_fill_manual(values=c("#85929E","#D5D8DC"), labels=c("congruent","incongruent"))+ ## manuscript 
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,100,10),expand = c(0, 0), limits = c(0,100))+
+  geom_hline(yintercept=0)+
+  labs(x= "", y="% of total trials", fill="") +
+  ggtitle("detailed")
 
-
+#ggsave(path = "~/Downloads/", width = 4.5, height = 4.5, device='tiff', filename = "fig2", dpi=500)
 
 ```
+
+
+
 
 
 

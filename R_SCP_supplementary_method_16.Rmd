@@ -1,190 +1,41 @@
 ---
-title: "SCP Univariate Control Analysis"
+title: "Supplementary Method 16: Post-encoding anterior hippocampus-mPFC connectivity correlation with coarse congruent memory plotted according to counterbalancing group"
 output: html_notebook
 ---
 
-Trialwise univariate activation was extracted from the mPFC (for trials where got context correct) and hippocampi (for trials where got context and scene correct). Here, we test for effects of congruency and delay on univariate activation.
+Sam Audrain August 2022
+V 2.0
 
-# Load packages 
+# Packages 
 ```{r}
-
-library(psych)
-library(lme4)
-library(nlme)
+library(dplyr)
 library(ggplot2)
-library(effects)
-library(emmeans)
-library(Rmisc)
 
 ```
 
-# Create dataset for stats comparisons, R/UR trialwise univariate, regardless of detail (used for mPFC)
-
+# Read in data
 ```{r}
 
-
-delays<-c("short", "long")
-
-conds<-c("R", "UR")
-
-masks<-c("BNA_mPFC2_funcspace_thr0.95")
-
-#subjects in CB1 condition, i.e. short --> long
-CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
-
-for (delay in delays){
-  for (cond in conds){
-    for (mask in masks){
-       data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/extracted_betas_trialwise/",cond,"_act_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
-       colnames(data)<- c("subj", "trial", "mask", "uni_act")
-       data$delay<-rep(delay, (nrow(data)))
-       data$condition<-rep(cond, (nrow(data)))
-       data$CB_order<-rep(2, nrow(data))
-       for (r in 1:nrow(data)){
-            if (data[r,"subj"] == "P201_20181101"){
-              data[r,"subj"]<-"P101_20181029"
-            } else if (data[r,"subj"] == "S205_20181116"){
-              data[r,"subj"]<-"S105_20181113"
-            } else if (data[r,"subj"] == "S206_20181122"){
-              data[r,"subj"]<-"S106_20181119"
-            } else if (data[r,"subj"] == "S207_20181129"){
-              data[r,"subj"]<-"S107_20181126"
-            } else if (data[r,"subj"] == "S209_20190117"){
-              data[r,"subj"]<-"S109_20190114"
-            } else if (data[r,"subj"] == "S210_20190123"){
-              data[r,"subj"]<-"S110_20190120"
-            }
-          }
-       # insert counterbalancing condition 1 for relevant subjects
-      for (r in 1:nrow(data)){
-        if (is.element(data[r, "subj"], CB_SL_subj) == TRUE){
-           data[r,"CB_order"]<- 1
-        }
-      }
-       name<-paste(delay,mask,cond, sep="_")
-       assign(name,data) #saves the mean and std under the current masks name
-    }
-  }
-}
-
-mPFC_data<-rbind(short_BNA_mPFC2_funcspace_thr0.95_R, short_BNA_mPFC2_funcspace_thr0.95_UR, long_BNA_mPFC2_funcspace_thr0.95_R, long_BNA_mPFC2_funcspace_thr0.95_UR)
-
-
+###### CHANGE PATH FOR YOUR DATA #######
+data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/SCP_connectivity_data.csv")
 
 ```
 
+# Plot 
+Supplementary Fig. 14
+```{r, fig.height=6,fig.width=5.5}
 
-## mPFC 
-
-Univariate activation ~ delay and congruency 
-```{r, fig.height=5,fig.width=6}
-
-### omnibus 
-model<-lmer(uni_act ~ delay*condition + (1+CB_order|subj), data=mPFC_data, control = lmerControl(optimizer ="Nelder_Mead")) 
-
-## check assumptions 
-hist(residuals(model))
-plot(model)
-data2<-subset(mPFC_data, !is.na(uni_act)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch
-leveneTest(residuals(model) ~ data2$condition * data2$delay) ## heteroskedastic
-
-anova(model)
-```
-
-
-# Create dataset for stats comparisons, R/UR trialwise univariate, only for detailed trials (used for hippocampi)
-
-```{r}
-
-delays<-c("short", "long")
-
-conds<-c("R", "UR")
-
-masks<-c("R_ant_hippo_seg_funcspace_thr0.2", "R_post_hippo_seg_funcspace_thr0.2")
-
-#subjects in CB1 condition, i.e. short --> long
-CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
-
-for (delay in delays){
-  for (cond in conds){
-    for (mask in masks){
-       data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/extracted_betas_trialwise/",cond,"_act_fine_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
-       colnames(data)<- c("subj", "trial", "mask", "uni_act")
-       data$delay<-rep(delay, (nrow(data)))
-       data$condition<-rep(cond, (nrow(data)))
-       data$CB_order<-rep(2, nrow(data))
-       for (r in 1:nrow(data)){
-            if (data[r,"subj"] == "P201_20181101"){
-              data[r,"subj"]<-"P101_20181029"
-            } else if (data[r,"subj"] == "S205_20181116"){
-              data[r,"subj"]<-"S105_20181113"
-            } else if (data[r,"subj"] == "S206_20181122"){
-              data[r,"subj"]<-"S106_20181119"
-            } else if (data[r,"subj"] == "S207_20181129"){
-              data[r,"subj"]<-"S107_20181126"
-            } else if (data[r,"subj"] == "S209_20190117"){
-              data[r,"subj"]<-"S109_20190114"
-            } else if (data[r,"subj"] == "S210_20190123"){
-              data[r,"subj"]<-"S110_20190120"
-            }
-          }
-       # insert counterbalancing condition 1 for relevant subjects
-      for (r in 1:nrow(data)){
-        if (is.element(data[r, "subj"], CB_SL_subj) == TRUE){
-           data[r,"CB_order"]<- 1
-        }
-      }
-       name<-paste(delay,mask,cond, sep="_")
-       assign(name,data) #saves the mean and std under the current masks name
-    }
-  }
-}
-
-hippo_right_ant_data<-rbind(short_R_ant_hippo_seg_funcspace_thr0.2_R,short_R_ant_hippo_seg_funcspace_thr0.2_UR,long_R_ant_hippo_seg_funcspace_thr0.2_R,long_R_ant_hippo_seg_funcspace_thr0.2_UR)
-
-hippo_right_post_data<-rbind(short_R_post_hippo_seg_funcspace_thr0.2_R,short_R_post_hippo_seg_funcspace_thr0.2_UR,long_R_post_hippo_seg_funcspace_thr0.2_R,long_R_post_hippo_seg_funcspace_thr0.2_UR)
-
+data %>%
+  ggplot(aes(y = coarse_related_long, x = post_pre_AH_mPFC, color = CB)) +
+  geom_smooth(method = lm, level = 0.90, color = "black") +
+  geom_point(size = 5) +
+  theme_classic() +
+  theme(text = element_text(size = 18), axis.text.x = element_text(size=18), axis.text.y = element_text(size=18), plot.title = element_text(face="bold", hjust=0.5, size=22), legend.position="bottom")+
+  scale_color_manual(values=c("#2c7fb8","#253494"),labels=c("Group B","Group A"))+
+  scale_shape_manual(values=c(20))+
+  guides(shape = FALSE, size = FALSE)+
+  labs(y = "coarse congruent recall (% of congruent)",
+       x = "ant. hipp - mPFC connectivity (post-pre)",
+       title = "")
 
 ```
-
-## Anterior Hippocampus 
-```{r, fig.height=5,fig.width=6}
-
-#so this model has a random intercept for each subject. decided not to go with trials nested within subject because didnt add anything to the model when tested on mPFC model comparisons 
-
-### omnibus 
-model<-lmer(uni_act ~ delay*condition + (1+CB_order|subj), data=hippo_right_ant_data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
-
-## check assumptions 
-hist(residuals(model))
-plot(model)
-data2<-subset(hippo_right_ant_data, !is.na(uni_act)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch
-leveneTest(residuals(model) ~ data2$condition * data2$delay) 
-leveneTest(residuals(model) ~ data2$condition) 
-leveneTest(residuals(model) ~ data2$delay) 
-
-anova(model)
-
-```
-
-
-## Posterior Hippocampus
-```{r, fig.height=5,fig.width=6}
-
-### omnibus 
-model<-lmer(uni_act ~ delay*condition + (1+CB_order|subj), data=hippo_right_post_data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
-
-## check model assumptions 
-hist(residuals(model))
-plot(model)
-data2<-subset(hippo_right_post_data, !is.na(uni_act)) #need to get rid of subjects that were dropped from the model/NA's, otherwise leveneTest will say mismatch
-leveneTest(residuals(model) ~ data2$condition * data2$delay)
-leveneTest(residuals(model) ~ data2$condition)
-leveneTest(residuals(model) ~ data2$delay)
-
-anova(model)
-
-```
-
-
-

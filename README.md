@@ -14,27 +14,45 @@ Rstudio can be downloaded here: https://www.rstudio.com/products/rstudio/downloa
 # The scripts
 R scripts:
 - R_SCP_behaviour_analysis.Rmd
-  - contains code for the behavioural modelling and plots of the main manuscript, as well as supplementary methods 1 and 2.
+  - contains code for the behavioural modelling and plots of the main manuscript
 - R_SCP_connectivity_analysis.Rmd
-  - contains code for the resting state connectivity correlations with behaviour and plot, in main manuscript. As well as supplementary methods 4, 9, and 13. 
+  - contains code for the resting state connectivity correlations with behaviour and plot in main manuscript. 
 - SCP_RSA_context_mem_analyses.Rmd
-  - contains code for modelling and plotting of the medial prefrontal cortex RSA analyses on context memory trials (main manuscript), and supplementary method 5. 
+  - contains code for modelling and plotting of the medial prefrontal cortex RSA analyses on context memory trials (main manuscript)
 - SCP_RSA_scene_mem_analyses.Rmd
-  - contains code for modelling and plotting of the hippocampal RSA analyses on trials remembered with specificity (main manuscript), and supplementary methods 11 and 13. 
+  - contains code for modelling and plotting of the hippocampal RSA analyses on trials remembered with specificity (main manuscript)
+- R_SCP_supplementary_method_1.Rmd
+  - contains code for modelling and plotting supplementary method 1.
+- R_SCP_supplementary_method_2.Rmd
+  - contains code for modelling and plotting supplementary method 2.
 - R_SCP_supplementary_method_3.Rmd
   - contains code for modelling and plotting supplementary method 3.
+- R_SCP_supplementary_method_4.Rmd
+  - contains code for modelling and plotting supplementary method 4.
+- R_SCP_supplementary_method_5.Rmd
+  - contains code for modelling and plotting supplementary method 5.
 - R_SCP_supplementary_method_6.Rmd
   - contains code for modelling and plotting supplementary method 6.
 - R_SCP_supplementary_method_7.Rmd
   - contains code for modelling and plotting supplementary method 7.
 - R_SCP_supplementary_method_8.Rmd
   - contains code for modelling and plotting supplementary method 8. 
+- R_SCP_supplementary_method_9.Rmd
+  - contains code for supplementary method 9.
 - R_SCP_supplementary_method_10.Rmd
   - contains code for modelling and plotting supplementary method 10. 
+- R_SCP_supplementary_method_11.Rmd
+  - contains code for modelling and plotting supplementary method 11.
 - R_SCP_supplementary_method_12.Rmd
   - contains code for modelling and plotting supplementary method 12.
+- R_SCP_supplementary_method_13.Rmd
+  - contains code for modelling and plotting supplementary method 13.
+- R_SCP_supplementary_method_14.Rmd
+  - contains code for modelling and plotting supplementary method 14.
 - R_SCP_supplementary_method_16.Rmd
-  - contains code for supplementary method 16. 
+  - contains code for modelling and plotting supplementary method 16. 
+- R_SCP_supplementary_method_17.Rmd
+  - contains code for supplementary method 17.
   
 # The data
 ## The behavioural data
@@ -47,7 +65,7 @@ SCP_behavioural_data.csv
 - accuracy_gran: accuracy broken down by both congruency and granularity
 - accuracy_rel: accuracy based on congruency, collapsed across granularity
 - prop_forgetting: refers to proportion forgotten across long delay relative to short, short-long/short for accuracy_gran scores
-- include: subjects with 0 are outliers with very high coarse congruent memory across long delay 
+- include: subjects with 0 are outliers with very high coarse congruent memory across long delay
 - CB_order: counterbalancing order, subjects with 1 did short delay followed by long delay, subjects with 2 had long delay followed by short delay
 - DK: for coarse memories, these numbers refer to number of trials where subjects said 'don't know' to context question. For detailed memories, it's the number of trials where they got the coarse context correct but answered 'don't know' for the scene question. 
 - incorrect: for coarse memories, this refers to number of trials where the subject chose the wrong context. For detailed memories, it refers to number of trials where subject answered the coarse context qusetion correctly but got the scene question incorrect. 
@@ -155,8 +173,31 @@ RSA_output
   - Columns from left to right: subject identifier, correlation number, mask, Pearson's correlation
   - These are all across-run correlations, and have not been averaged in any way, or Fisher transformed
 
-
 This data accompanies the SCP_RSA_context_mem_analyses.Rmd and SCP_RSA_scene_mem_analyses.Rmd and most of the supplemental methods .Rmd scripts. 
+
+
+RSA_output_cat
+- contains csv files with the same naming convention and structure as RSA_output, the difference is the category of the stimulus is also included for each trial. 
+- samescene correlations 
+  - B1B1
+    - beach 1 correlations with other beach 1 trials 
+  - B2B2
+    - beach 2 correlations with other beach 2 trials 
+  - K1K1
+    - kitchen 1 correlations with other kitchen 1 trials 
+  - K2K2
+    - kitchen 2 correlations with other kitchen 2 trials 
+- simscene correlations
+  - B1B2 and B2B1
+    - beach 1 correlations with beach 2 trials 
+  - K1K2 and K2K1
+    - kitchen 1 correlations with kitchen 2 trials 
+- xcon correlations 
+  - B1K, B2K, K1B, K2B
+    - beach correlations with kitchen trials
+
+This data accompanies supplementary_method_11.Rmd.
+
 
 extracted_betas_trialwise
 - each csv file in this folder contains average univariate trialwise activation within an ROI
@@ -183,7 +224,7 @@ You will need to change the path in each script to point to wherever you saved t
 
 You will also need to download the function summarySEwithin2.R and save it in the same folder as the downloaded scripts, in order to be able to calculate wtihin-subject standard error bars for the plots. 
 
-Running these scripts will reproduce the stasticial analyses (ANOVA tables, pairwise comparison tables, correlation tests etc.), as well as plots of the data used in the main manuscript and supplementary material. Each script should take no more than a few minutes to run. 
+Running these scripts will reproduce the statistical analyses (ANOVA tables, pairwise comparison tables, correlation tests etc.), as well as plots of the data used in the main manuscript and supplementary material. Each script should take no more than a few minutes to run. 
 
 # License
 All code in this repository is licensed under the MIT license.

@@ -1,0 +1,417 @@
+---
+title: "Supplementary Method 11: Pattern similarity broken down by scene category."
+output: html_notebook
+---
+ 
+Sam Audrain August 2022
+V 2.0 
+
+
+# Packages
+```{r}
+
+library(lme4)
+library(ggplot2)
+library(emmeans)
+library(psych)
+library(Rmisc)
+library(ggtext)
+
+```
+
+
+# mPFC
+
+## Create dataset for stats comparisons 
+- Correlations are fisher transformed into normal distributions for statistical comparison here 
+- organizes within context and across context correlations (for mPFC)
+
+```{r}
+
+# short = short delay data, long = long delay data
+delays<-c("short", "long")
+
+# R = congruent, UR = incongruent
+conds<-c("R", "UR")
+
+# ROIs
+masks<-c("BNA_mPFC2")
+
+# within context vs across context correlations 
+grans<-c("wincon", "xcon")
+
+#subjects in CB1 condition, i.e. short --> long
+CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
+
+
+for (delay in delays){
+  for (cond in conds){
+    for (gran in grans){
+      for (mask in masks){
+        ###### CHANGE PATH FOR YOUR DATA ####### 
+        data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_V8_cat/",cond,"_corrs_",gran,"_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+        colnames(data)<- c("subj", "trial", "mask", "R", "cat")
+        data$R_fish<-fisherz(data$R) # fisher transformation
+        # add condition information 
+        data$condition<-rep(gran, (nrow(data)))
+        data$delay<-rep(delay, (nrow(data)))
+        data$congruency<-rep(cond, (nrow(data)))
+        # putting counterbalancing condition to 2 for everyone since there are more people in this condition. Will swap out those in CB1 below. 
+        data$CB_order<-rep(2, nrow(data))
+        # make naming convention the same across delays for counterbalanced subjects 
+        for (r in 1:nrow(data)){
+          if (data[r,"subj"] == "P201_20181101"){
+            data[r,"subj"]<-"P101_20181029"
+          } else if (data[r,"subj"] == "S205_20181116"){
+            data[r,"subj"]<-"S105_20181113"
+          } else if (data[r,"subj"] == "S206_20181122"){
+            data[r,"subj"]<-"S106_20181119"
+          } else if (data[r,"subj"] == "S207_20181129"){
+            data[r,"subj"]<-"S107_20181126"
+          } else if (data[r,"subj"] == "S209_20190117"){
+            data[r,"subj"]<-"S109_20190114"
+          } else if (data[r,"subj"] == "S210_20190123"){
+            data[r,"subj"]<-"S110_20190120"
+          }
+        }
+        # insert counterbalancing condition 1 for relevant subjects
+        for (r in 1:nrow(data)){
+          if (is.element(data[r, "subj"], CB_SL_subj) == TRUE){
+             data[r,"CB_order"]<- 1
+          } 
+        }
+        name<-paste(delay,mask,cond,gran,sep="_")
+        assign(name,data) #saves the mean and std under the current masks name
+      }
+    }
+  }
+}
+
+
+# create dataset 
+mPFC_data<-rbind(short_BNA_mPFC2_R_wincon,short_BNA_mPFC2_R_xcon,short_BNA_mPFC2_UR_wincon,short_BNA_mPFC2_UR_xcon,long_BNA_mPFC2_R_wincon,long_BNA_mPFC2_R_xcon, long_BNA_mPFC2_UR_wincon,long_BNA_mPFC2_UR_xcon)
+
+# cleanup enviro 
+rm(short_BNA_mPFC2_R_wincon,short_BNA_mPFC2_R_xcon,short_BNA_mPFC2_UR_wincon,short_BNA_mPFC2_UR_xcon,long_BNA_mPFC2_R_wincon,long_BNA_mPFC2_R_xcon, long_BNA_mPFC2_UR_wincon,long_BNA_mPFC2_UR_xcon)
+
+
+```
+
+## Plot Beaches
+
+```{r, fig.height=4,fig.width=4}
+
+# subset the data 
+mPFC_data_beach<-subset(mPFC_data, cat != "KK")
+
+# model 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=mPFC_data_beach, na.action=na.omit) 
+
+# summarize data 
+table<-as.data.frame(emmeans(model, list(pairwise ~ condition:congruency:delay), adjust = "none"))
+colnames(table)<-c("condition", "congruency", "delay", "contrast", "emmean", "SE", "df", "asymp.LCL", "asymp.UCL")
+table<-subset(table, contrast == ".")
+
+stats<-summarySEwithin(data=mPFC_data_beach, measurevar = "R_fish", withinvars = c("delay","congruency","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and correct se 
+stats$emmean<-table$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom", axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#2C3E50","#5D6D7E","#85929E","#D5D8DC"), labels = c("congruent within", "congruent across", "incongruent within","incongruent across"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,0.08,0.01),expand = c(0, 0), limits = c(0,0.08))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("mPFC beaches")
+
+
+```
+
+
+## Plot Kitchens
+
+```{r, fig.height=4,fig.width=4}
+
+# subset the data 
+mPFC_data_kitchen<-subset(mPFC_data, cat != "BB")
+
+# model 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=mPFC_data_kitchen, na.action=na.omit) 
+
+# summarize data 
+table<-as.data.frame(emmeans(model, list(pairwise ~ condition:congruency:delay), adjust = "none"))
+colnames(table)<-c("condition", "congruency", "delay", "contrast", "emmean", "SE", "df", "asymp.LCL", "asymp.UCL")
+table<-subset(table, contrast == ".")
+
+stats<-summarySEwithin(data=mPFC_data_kitchen, measurevar = "R_fish", withinvars = c("delay","congruency","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and correct se 
+stats$emmean<-table$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom", axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#2C3E50","#5D6D7E","#85929E","#D5D8DC"), labels = c("congruent within kitch.", "congruent across", "incongruent within kitch.","incongruent across"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,0.08,0.01),expand = c(0, 0), limits = c(0,0.08))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("mPFC kitchens")
+
+```
+
+# Hippocampi 
+
+## Create datasets for stats comparisons, on detailed mems 
+```{r}
+
+
+# short = short delay data, long = long delay data
+delays<-c("short", "long")
+
+# R = congruent, UR = incongruent
+conds<-c("R", "UR")
+
+# ROIs
+masks<-c("right_hippo_ant", "right_hippo_post")
+
+# condition: same scene, similar scene, and cross context correlations
+grans<-c("simscene", "samescene", "xcon")
+
+# for memories remembered with fine granularity/detail only
+grans2<-c("fine")
+
+# subjects in CB1 counterbalancing condition, i.e. short --> long
+CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
+
+
+for (delay in delays){
+  for (cond in conds){
+    for (gran in grans){
+      for(gran2 in grans2){
+        for (mask in masks){
+          ###### CHANGE PATH FOR YOUR DATA #######
+          data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_V8_cat/",cond,"_corrs_",gran,"_fine_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+          colnames(data)<- c("subj", "trial", "mask", "R", "cat")
+          data$R_fish<-fisherz(data$R) # fisher transformation
+          # add conditions 
+          data$condition<-rep(gran, (nrow(data)))
+          data$delay<-rep(delay, (nrow(data)))
+          data$congruency<-rep(cond, (nrow(data)))
+          # putting counterbalancing condition to 2 for everyone since there are more people in this condition. Will swap out those in CB1 below.
+        data$CB_order<-rep(2, nrow(data))
+          # ensure consistent naming of counterbalanced subjects
+          for (r in 1:nrow(data)){
+            if (data[r,"subj"] == "P201_20181101"){
+              data[r,"subj"]<-"P101_20181029"
+            } else if (data[r,"subj"] == "S205_20181116"){
+              data[r,"subj"]<-"S105_20181113"
+            } else if (data[r,"subj"] == "S206_20181122"){
+              data[r,"subj"]<-"S106_20181119"
+            } else if (data[r,"subj"] == "S207_20181129"){
+              data[r,"subj"]<-"S107_20181126"
+            } else if (data[r,"subj"] == "S209_20190117"){
+              data[r,"subj"]<-"S109_20190114"
+            } else if (data[r,"subj"] == "S210_20190123"){
+              data[r,"subj"]<-"S110_20190120"
+            }
+          }
+         # insert counterbalancing condition 1 for relevant subjects
+        for (r in 1:nrow(data)){
+          if (is.element(data[r, "subj"], CB_SL_subj) == TRUE){
+             data[r,"CB_order"]<- 1
+          }
+        }
+          name<-paste(delay,mask,cond,gran,gran2,sep="_")
+          assign(name,data) #saves the mean and std under the current masks name
+        }
+      }
+    }
+  }
+}
+
+
+#create right ant hippo dataset
+hippo_right_ant_data_fine<-rbind(short_right_hippo_ant_R_simscene_fine,short_right_hippo_ant_R_samescene_fine,short_right_hippo_ant_R_xcon_fine, short_right_hippo_ant_UR_simscene_fine,short_right_hippo_ant_UR_samescene_fine,short_right_hippo_ant_UR_xcon_fine,long_right_hippo_ant_R_simscene_fine,long_right_hippo_ant_R_samescene_fine,long_right_hippo_ant_R_xcon_fine, long_right_hippo_ant_UR_simscene_fine,long_right_hippo_ant_UR_samescene_fine,long_right_hippo_ant_UR_xcon_fine)
+
+#create right post hippo dataset
+hippo_right_post_data_fine<-rbind(short_right_hippo_post_R_simscene_fine,short_right_hippo_post_R_samescene_fine,short_right_hippo_post_R_xcon_fine, short_right_hippo_post_UR_simscene_fine,short_right_hippo_post_UR_samescene_fine,short_right_hippo_post_UR_xcon_fine,long_right_hippo_post_R_simscene_fine,long_right_hippo_post_R_samescene_fine,long_right_hippo_post_R_xcon_fine, long_right_hippo_post_UR_simscene_fine,long_right_hippo_post_UR_samescene_fine,long_right_hippo_post_UR_xcon_fine)
+
+# clean up enviro
+rm(short_right_hippo_ant_R_simscene_fine,short_right_hippo_ant_R_samescene_fine,short_right_hippo_ant_R_xcon_fine, short_right_hippo_ant_UR_simscene_fine,short_right_hippo_ant_UR_samescene_fine,short_right_hippo_ant_UR_xcon_fine,long_right_hippo_ant_R_simscene_fine,long_right_hippo_ant_R_samescene_fine,long_right_hippo_ant_R_xcon_fine, long_right_hippo_ant_UR_simscene_fine,long_right_hippo_ant_UR_samescene_fine,long_right_hippo_ant_UR_xcon_fine)
+
+rm(short_right_hippo_post_R_simscene_fine,short_right_hippo_post_R_samescene_fine,short_right_hippo_post_R_xcon_fine, short_right_hippo_post_UR_simscene_fine,short_right_hippo_post_UR_samescene_fine,short_right_hippo_post_UR_xcon_fine,long_right_hippo_post_R_simscene_fine,long_right_hippo_post_R_samescene_fine,long_right_hippo_post_R_xcon_fine, long_right_hippo_post_UR_simscene_fine,long_right_hippo_post_UR_samescene_fine,long_right_hippo_post_UR_xcon_fine)
+
+
+```
+
+## Right anterior hippocampus
+
+### Plot Beaches
+
+```{r, fig.height=4,fig.width=4}
+
+# subset the data 
+hippo_right_ant_data_fine_beaches<-subset(hippo_right_ant_data_fine, cat != "K1K2" & cat != "K2K1" & cat != "K1K1" & cat != "K2K2")
+
+# model to plot 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=hippo_right_ant_data_fine_beaches, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+
+# summarize the data 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay), adjust = "none"))
+colnames(eff_interaction)<-c("condition", "delay", "contrast", "emmean", "SE", "df", "asymp.LCL", "asymp.UCL")
+eff_interaction<-subset(eff_interaction, contrast == ".")
+#grab within-subject error bars 
+stats<-summarySEwithin(data=hippo_right_ant_data_fine_beaches, measurevar = "R_fish", withinvars = c("delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and correct se 
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+#plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom", axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#5D6D7E","#85929E","#D5D8DC"), labels = c("same scene", "similar scene", "other context"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,0.06,0.01), expand = c(0, 0), limits = c(0,0.06))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("AH beaches
+          ")
+
+```
+
+
+### Plots Kitchens
+
+```{r, fig.height=4,fig.width=4}
+
+# subset the data 
+hippo_right_ant_data_fine_kitchens<-subset(hippo_right_ant_data_fine, cat != "B1B2" & cat != "B2B1" & cat != "B1B1" & cat != "B2B2")
+
+# model
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=hippo_right_ant_data_fine_kitchens, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+
+# summarize the data 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay), adjust = "none"))
+colnames(eff_interaction)<-c("condition", "delay", "contrast", "emmean", "SE", "df", "asymp.LCL", "asymp.UCL")
+eff_interaction<-subset(eff_interaction, contrast == ".")
+#grab within-subject error bars 
+stats<-summarySEwithin(data=hippo_right_ant_data_fine_kitchens, measurevar = "R_fish", withinvars = c("delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+#plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom", axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#5D6D7E","#85929E","#D5D8DC"), labels = c("same scene", "similar scene", "other context"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,0.06,0.01), expand = c(0, 0), limits = c(0,0.06))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("AH kitchens
+          ")
+
+```
+
+## Right posterior hippocampus
+
+### Plot Beaches
+
+```{r, fig.height=4,fig.width=4}
+
+# subset the data 
+hippo_right_post_data_fine_beaches<-subset(hippo_right_post_data_fine, cat != "K1K2" & cat != "K2K1" & cat != "K1K1" & cat != "K2K2")
+
+# model to plot 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=hippo_right_post_data_fine_beaches, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+
+# summarize the data 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay), adjust = "none"))
+colnames(eff_interaction)<-c("condition", "delay", "contrast", "emmean", "SE", "df", "asymp.LCL", "asymp.UCL")
+eff_interaction<-subset(eff_interaction, contrast == ".")
+#grab within-subject error bars 
+stats<-summarySEwithin(data=hippo_right_post_data_fine_beaches, measurevar = "R_fish", withinvars = c("delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and correct se 
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+#plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom", axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#5D6D7E","#85929E","#D5D8DC"), labels = c("same scene", "similar scene", "other context"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,0.06,0.01), expand = c(0, 0), limits = c(0,0.06))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("PH beaches
+          ")
+
+```
+
+
+### Plots Kitchens
+
+```{r, fig.height=4,fig.width=4}
+
+# subset the data 
+hippo_right_post_data_fine_kitchens<-subset(hippo_right_post_data_fine, cat != "B1B2" & cat != "B2B1" & cat != "B1B1" & cat != "B2B2")
+
+# model
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=hippo_right_post_data_fine_kitchens, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+
+# summarize the data 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay), adjust = "none"))
+colnames(eff_interaction)<-c("condition", "delay", "contrast", "emmean", "SE", "df", "asymp.LCL", "asymp.UCL")
+eff_interaction<-subset(eff_interaction, contrast == ".")
+#grab within-subject error bars 
+stats<-summarySEwithin(data=hippo_right_post_data_fine_kitchens, measurevar = "R_fish", withinvars = c("delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+#plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom", axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#5D6D7E","#85929E","#D5D8DC"), labels = c("same scene", "similar scene", "other context"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(0,0.06,0.01), expand = c(0, 0), limits = c(0,0.06))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("PH kitchens
+          ")
+
+```

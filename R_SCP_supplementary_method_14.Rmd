@@ -1,0 +1,183 @@
+---
+title: "Supplementary Method 14: Pattern similarity in the left hippocampus"
+output: html_notebook
+---
+
+Sam Audrain August 2022
+V 2.0
+
+
+# Packages
+```{r}
+
+library(lme4)
+library(lmerTest)
+library(ggplot2)
+library(emmeans)
+library(psych)
+library(Rmisc)
+library(ggtext)
+
+```
+
+
+# Create datasets for stats comparisons
+On detailed memories only 
+
+```{r}
+
+
+# short = short delay data, long = long delay data
+delays<-c("short", "long")
+
+# R = congruent, UR = incongruent
+conds<-c("R", "UR")
+
+# ROIs
+masks<-c("left_hippo_ant", "left_hippo_post")
+
+# condition: same scene, similar scene, and across context correlations
+grans<-c("simscene", "samescene", "xcon")
+
+# for memories remembered with fine granularity/detail only
+grans2<-c("fine")
+
+# subjects in CB1 condition, i.e. short --> long
+CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
+
+
+for (delay in delays){
+  for (cond in conds){
+    for (gran in grans){
+      for(gran2 in grans2){
+        for (mask in masks){
+          ###### CHANGE PATH FOR YOUR DATA #######
+          data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output/",cond,"_corrs_",gran,"_fine_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+          colnames(data)<- c("subj", "trial", "mask", "R")
+          data$R_fish<-fisherz(data$R) # fisher transform the data 
+          # add condition information 
+          data$condition<-rep(gran, (nrow(data)))
+          data$delay<-rep(delay, (nrow(data)))
+          data$congruency<-rep(cond, (nrow(data)))
+          # putting counterbalancing condition to 2 for everyone since there are more people in this condition. Will swap out those in CB1 below.
+        data$CB_order<-rep(2, nrow(data))
+          # ensure consistent naming of counterbalanced subjects
+          for (r in 1:nrow(data)){
+            if (data[r,"subj"] == "P201_20181101"){
+              data[r,"subj"]<-"P101_20181029"
+            } else if (data[r,"subj"] == "S205_20181116"){
+              data[r,"subj"]<-"S105_20181113"
+            } else if (data[r,"subj"] == "S206_20181122"){
+              data[r,"subj"]<-"S106_20181119"
+            } else if (data[r,"subj"] == "S207_20181129"){
+              data[r,"subj"]<-"S107_20181126"
+            } else if (data[r,"subj"] == "S209_20190117"){
+              data[r,"subj"]<-"S109_20190114"
+            } else if (data[r,"subj"] == "S210_20190123"){
+              data[r,"subj"]<-"S110_20190120"
+            }
+          }
+         # insert counterbalancing condition 1 for relevant subjects
+        for (r in 1:nrow(data)){
+          if (is.element(data[r, "subj"], CB_SL_subj) == TRUE){
+             data[r,"CB_order"]<- 1
+          }
+        }
+          name<-paste(delay,mask,cond,gran,gran2,sep="_")
+          assign(name,data) #saves the mean and std under the current masks name
+        }
+      }
+    }
+  }
+}
+
+
+
+
+# create left ant hippo dataset
+hippo_left_ant_data_fine<-rbind(short_left_hippo_ant_R_simscene_fine,short_left_hippo_ant_R_samescene_fine,short_left_hippo_ant_R_xcon_fine, short_left_hippo_ant_UR_simscene_fine,short_left_hippo_ant_UR_samescene_fine,short_left_hippo_ant_UR_xcon_fine,long_left_hippo_ant_R_simscene_fine,long_left_hippo_ant_R_samescene_fine,long_left_hippo_ant_R_xcon_fine, long_left_hippo_ant_UR_simscene_fine,long_left_hippo_ant_UR_samescene_fine,long_left_hippo_ant_UR_xcon_fine)
+
+# create left post hippo dataset
+hippo_left_post_data_fine<-rbind(short_left_hippo_post_R_simscene_fine,short_left_hippo_post_R_samescene_fine,short_left_hippo_post_R_xcon_fine, short_left_hippo_post_UR_simscene_fine,short_left_hippo_post_UR_samescene_fine,short_left_hippo_post_UR_xcon_fine,long_left_hippo_post_R_simscene_fine,long_left_hippo_post_R_samescene_fine,long_left_hippo_post_R_xcon_fine, long_left_hippo_post_UR_simscene_fine,long_left_hippo_post_UR_samescene_fine,long_left_hippo_post_UR_xcon_fine)
+
+
+# clean up environment 
+rm(short_left_hippo_ant_R_simscene_fine,short_left_hippo_ant_R_samescene_fine,short_left_hippo_ant_R_xcon_fine, short_left_hippo_ant_UR_simscene_fine,short_left_hippo_ant_UR_samescene_fine,short_left_hippo_ant_UR_xcon_fine,long_left_hippo_ant_R_simscene_fine,long_left_hippo_ant_R_samescene_fine,long_left_hippo_ant_R_xcon_fine, long_left_hippo_ant_UR_simscene_fine,long_left_hippo_ant_UR_samescene_fine,long_left_hippo_ant_UR_xcon_fine)
+
+rm(short_left_hippo_post_R_simscene_fine,short_left_hippo_post_R_samescene_fine,short_left_hippo_post_R_xcon_fine, short_left_hippo_post_UR_simscene_fine,short_left_hippo_post_UR_samescene_fine,short_left_hippo_post_UR_xcon_fine,long_left_hippo_post_R_simscene_fine,long_left_hippo_post_R_samescene_fine,long_left_hippo_post_R_xcon_fine, long_left_hippo_post_UR_simscene_fine,long_left_hippo_post_UR_samescene_fine,long_left_hippo_post_UR_xcon_fine)
+
+
+```
+
+
+# Left anterior hippocampus
+
+Supplementary Fig.13
+```{r, fig.height=5,fig.width=4.5}
+
+# model to plot 
+model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=hippo_left_ant_data_fine, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+
+# break up the data into all conditions to visualize 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay:congruency), adjust = "none"))
+eff_interaction<-subset(eff_interaction, X1 == ".")
+
+# summarize to plot 
+stats<-summarySEwithin(data=hippo_left_ant_data_fine, measurevar = "R_fish", withinvars = c("congruency","delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and SE 
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#253494","#2c7fb8","#41b6c4", "#7fcdbb", "#c7e9b4", "#ffffcc"), labels = c("C same scene", "C similar scene", "C other context", "IC same scene", "IC similar scene", "IC other context"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(-0.01,0.1,0.01), expand = c(0, 0), limits = c(-0.01,0.1))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("anterior hippocampus")
+
+
+```
+
+
+# Left posterior hippocampus
+
+Supplemental Fig.13
+```{r, fig.height=5,fig.width=4.5}
+
+# model to plot
+model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=hippo_left_post_data_fine, na.action=na.omit,control = lmerControl(optimizer ="Nelder_Mead"))
+
+# break up the data into all conditions to visualize 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay:congruency), adjust = "none"))
+eff_interaction<-subset(eff_interaction, X1 == ".")
+
+# summarize to plot 
+stats<-summarySEwithin(data=hippo_left_post_data_fine, measurevar = "R_fish", withinvars = c("congruency","delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18), axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#253494","#2c7fb8","#41b6c4", "#7fcdbb", "#c7e9b4", "#ffffcc"), labels = c("C same scene", "C similar scene", "C other context", "IC same scene", "IC similar scene", "IC other context"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(-0.01,0.1,0.01), expand = c(0, 0), limits = c(-0.01,0.1))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("posterior hippocampus")
+
+```

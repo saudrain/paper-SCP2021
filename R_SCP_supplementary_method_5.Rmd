@@ -1,0 +1,213 @@
+---
+title: "Supplementary Method 5: Pattern similarity in the hippocampus over time during retrieval of object-context pairs, regardless of memory granularity"
+output: html_notebook
+---
+
+Sam Audrain August 2022
+V 2.0
+
+# Read in required packages
+```{r}
+
+library(lme4)
+library(lmerTest)
+library(ggplot2)
+library(emmeans)
+library(Rmisc)
+library(psych)
+library(MuMIn)
+library(ggtext)
+
+```
+
+
+# Create dataset for stats comparisons based on delay and congruency. 
+- Correlations are fisher transformed into normal distributions for statistical comparison here 
+- organizes within context and across context correlations 
+
+```{r}
+
+# short = short delay data, long = long delay data
+delays<-c("short", "long")
+
+# R = congruent, UR = incongruent
+conds<-c("R", "UR")
+
+# ROIs
+masks<-c("right_hippo_ant", "right_hippo_post")
+
+# within context vs across context correlations 
+grans<-c("wincon", "xcon")
+
+#subjects in CB1 counterbalancing condition, i.e. short --> long
+CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
+
+for (delay in delays){
+  for (cond in conds){
+    for (gran in grans){
+      for (mask in masks){
+        ###### CHANGE PATH FOR YOUR DATA ####### 
+        data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output/",cond,"_corrs_",gran,"_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+        colnames(data)<- c("subj", "trial", "mask", "R")
+        data$R_fish<-fisherz(data$R) # fisher transform the data
+        # add condition information 
+        data$condition<-rep(gran, (nrow(data)))
+        data$delay<-rep(delay, (nrow(data)))
+        data$congruency<-rep(cond, (nrow(data)))
+        # putting counterbalancing condition to 2 for everyone since there are more people in this condition. Will swap out those in CB1 below. 
+        data$CB_order<-rep(2, nrow(data))
+        # make naming convention the same across delays for counterbalanced subjects 
+        for (r in 1:nrow(data)){
+          if (data[r,"subj"] == "P201_20181101"){
+            data[r,"subj"]<-"P101_20181029"
+          } else if (data[r,"subj"] == "S205_20181116"){
+            data[r,"subj"]<-"S105_20181113"
+          } else if (data[r,"subj"] == "S206_20181122"){
+            data[r,"subj"]<-"S106_20181119"
+          } else if (data[r,"subj"] == "S207_20181129"){
+            data[r,"subj"]<-"S107_20181126"
+          } else if (data[r,"subj"] == "S209_20190117"){
+            data[r,"subj"]<-"S109_20190114"
+          } else if (data[r,"subj"] == "S210_20190123"){
+            data[r,"subj"]<-"S110_20190120"
+          }
+        }
+        # insert counterbalancing condition 1 for relevant subjects
+        for (r in 1:nrow(data)){
+          if (is.element(data[r, "subj"], CB_SL_subj) == TRUE){
+             data[r,"CB_order"]<- 1
+          } 
+        }
+        name<-paste(delay,mask,cond,gran,sep="_")
+        assign(name,data) #saves the mean and std under the current masks name
+      }
+    }
+  }
+}
+
+
+
+### ant hippo 
+# within and across context correlation dataset 
+AH_data<-rbind(short_right_hippo_ant_R_wincon,short_right_hippo_ant_R_xcon,short_right_hippo_ant_UR_wincon,short_right_hippo_ant_UR_xcon,long_right_hippo_ant_R_wincon,long_right_hippo_ant_R_xcon, long_right_hippo_ant_UR_wincon,long_right_hippo_ant_UR_xcon)
+
+# cleanup enviro 
+rm(short_right_hippo_ant_R_wincon,short_right_hippo_ant_R_xcon,short_right_hippo_ant_UR_wincon,short_right_hippo_ant_UR_xcon,long_right_hippo_ant_R_wincon,long_right_hippo_ant_R_xcon, long_right_hippo_ant_UR_wincon,long_right_hippo_ant_UR_xcon)
+
+
+### post hippo 
+# within and across context correlation dataset 
+PH_data<-rbind(short_right_hippo_post_R_wincon,short_right_hippo_post_R_xcon,short_right_hippo_post_UR_wincon,short_right_hippo_post_UR_xcon,long_right_hippo_post_R_wincon,long_right_hippo_post_R_xcon, long_right_hippo_post_UR_wincon,long_right_hippo_post_UR_xcon)
+
+# cleanup enviro 
+rm(short_right_hippo_post_R_wincon,short_right_hippo_post_R_xcon,short_right_hippo_post_UR_wincon,short_right_hippo_post_UR_xcon,long_right_hippo_post_R_wincon,long_right_hippo_post_R_xcon, long_right_hippo_post_UR_wincon,long_right_hippo_post_UR_xcon)
+
+```
+
+## Anterior hippocampmus
+
+### Model
+```{r, fig.height=5,fig.width=5}
+# model 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=AH_data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead")) 
+
+# check model assumptions 
+hist(residuals(model))
+plot(model)
+# looks good 
+
+# model stats 
+anova(model)
+r.squaredGLMM(model)
+
+# post hoc comparisons 
+emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+
+
+```
+
+### Plot
+Supplementary Fig. 5
+```{r, fig.height=5,fig.width=5}
+# prepare for plotting all effects
+table<-as.data.frame(emmeans(model, list(pairwise ~ condition:congruency:delay), adjust = "none"))
+table<-subset(table, X1 == ".")
+
+# summarize the data for plotting 
+stats<-summarySEwithin(data=AH_data, measurevar = "R_fish", withinvars = c("delay","congruency","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and SE
+stats$emmean<-table$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se)) +
+  theme(axis.text=element_text(size=18),axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#253494","#2c7fb8","#7fcdbb","#c7e9b4"), labels = c("congruent within", "congruent across", "incongruent within","incongruent across")) +
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long")) +
+  scale_y_continuous(breaks = seq(-0.01,0.08,0.01), expand = c(0, 0), limits = c(-0.01,0.08))+
+  geom_hline(yintercept=0) +
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("anterior hippocampus")
+
+
+```
+
+
+## Posterior hippocampus 
+
+### Model
+```{r, fig.height=5,fig.width=5}
+
+# model 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=PH_data, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead")) 
+
+# check model assumptions 
+hist(residuals(model))
+plot(model)
+# looks good 
+
+# model stats 
+anova(model)
+r.squaredGLMM(model)
+
+# post hoc tests
+emmeans(model, list(pairwise ~ congruency:delay), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178)
+
+
+```
+
+## Plot
+Supplementary Fig. 5
+```{r, fig.height=5,fig.width=5}
+
+# prepare for plotting all effects
+table<-as.data.frame(emmeans(model, list(pairwise ~ condition:congruency:delay), adjust = "none"))
+table<-subset(table, X1 == ".")
+
+# summarize the data for plotting 
+stats<-summarySEwithin(data=PH_data, measurevar = "R_fish", withinvars = c("delay","congruency","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and SE
+stats$emmean<-table$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.text=element_text(size=18),axis.title = element_text(size=20), axis.ticks.x=element_blank(), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#253494","#2c7fb8","#7fcdbb","#c7e9b4"), labels = c("congruent within", "congruent across", "incongruent within","incongruent across"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(-0.01,0.08,0.01), expand = c(0, 0), limits = c(-0.01,0.08))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("posterior hippocampus")
+
+```

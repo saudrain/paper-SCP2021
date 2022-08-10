@@ -1,0 +1,47 @@
+---
+title: "Supplementary Method 9: Relationship between connectivity and integration."
+output: html_notebook
+---
+
+Sam Audrain August 2022
+V 2.0
+
+# Packages 
+```{r}
+library(dplyr)
+library(ggplot2)
+
+```
+
+# Read in data
+```{r}
+
+###### CHANGE PATH FOR YOUR DATA #######
+data<-read.csv("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/SCP_connectivity_data.csv")
+
+```
+
+# Correlation test 
+```{r}
+attach(data)
+cor.test(post_pre_AH_mPFC, R_wincon_minus_xcon_long_mPFC, alternative = "two.sided")
+
+```
+
+
+# Plot 
+```{r, fig.height=6,fig.width=6.5}
+
+data %>%
+  ggplot(aes(y = R_wincon_minus_xcon_long_mPFC, x = post_pre_AH_mPFC)) +
+  geom_smooth(method = lm, level = 0.90, color = "black") +
+  geom_point(size = 5) +
+  theme_classic() +
+  theme(text = element_text(size = 18), axis.text.x = element_text(size=18), axis.text.y = element_text(size=18), plot.title = element_text(face="bold", hjust=0.5, size=22), legend.position="bottom")+
+  scale_shape_manual(values=c(20))+
+  guides(shape = FALSE, size = FALSE)+
+  labs(y = "mPFC integration",
+       x = "ant. hipp - mPFC connectivity (post-pre)",
+       title = "")
+
+```

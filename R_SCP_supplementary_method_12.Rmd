@@ -1,14 +1,28 @@
 ---
-title: "Supplementary Analysis 8"
+title: "Supplementary Method 12: Pattern similarity in the hippocampus and mPFC over time during retrieval of detailed congruent and incongruent object-scene pairs"
 output: html_notebook
 ---
  
-Sam Audrain Feb 2022
-V 0.0.3
+Sam Audrain August 2022
+V 2.0
 
-Looking at patterns in the right posterior hippocampus, regardless of memory quality (i.e. collapsed across coarse/fine). Control analysis. 
+# Packages
+```{r}
+library(lme4)
+library(lmerTest)
+library(ggplot2)
+library(emmeans)
+library(psych)
+library(Rmisc)
+library(ggtext)
 
-# Memory collapsed across caorse/fine in posthippo
+```
+
+
+# Create datasets for stats comparisons
+
+Detailed memories only 
+
 ```{r}
 
 
@@ -19,15 +33,15 @@ delays<-c("short", "long")
 conds<-c("R", "UR")
 
 # ROIs
-masks<-c("right_hippo_post")
+masks<-c("right_hippo_ant", "right_hippo_post","BNA_mPFC2")
 
-# condition: same scene, similar scene, and cross context correlations
+# condition: same scene, similar scene, and across context correlations
 grans<-c("simscene", "samescene", "xcon")
 
 # for memories remembered with fine granularity/detail only
 grans2<-c("fine")
 
-# subjects in CB1 condition, i.e. short --> long
+# subjects in CB1 counterbalancing condition, i.e. short --> long
 CB_SL_subj<-c("P101_20181029","S102_20181101","S103_20181112", "S104_20181113", "S105_20181113", "S106_20181119", "S107_20181126", "S108_20181126", "S109_20190114", "S110_20190120")
 
 
@@ -36,10 +50,11 @@ for (delay in delays){
     for (gran in grans){
       for(gran2 in grans2){
         for (mask in masks){
-          ###### CHANGE PATH FOR YOUR DATA ######
-          data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output/",cond,"_corrs_",gran,"_all_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
-          colnames(data)<- c("subj", "trial", "mask", "R", "category")
-          data$R_fish<-fisherz(data$R)
+          ###### CHANGE PATH FOR YOUR DATA #######
+          data<-read.csv(paste("~/Dropbox/Sam/Schema_Consolidation_Project/R_SCP/SCP_StatsModels_GitHub/RSA_output/",cond,"_corrs_",gran,"_fine_",delay,"_",mask,".csv",sep=""),header = FALSE, sep=" ",stringsAsFactors = FALSE)
+          colnames(data)<- c("subj", "trial", "mask", "R")
+          data$R_fish<-fisherz(data$R) # fisher transform the data 
+          # add condition information 
           data$condition<-rep(gran, (nrow(data)))
           data$delay<-rep(delay, (nrow(data)))
           data$congruency<-rep(cond, (nrow(data)))
@@ -76,71 +91,128 @@ for (delay in delays){
 }
 
 
+#create right ant hippo dataset
+hippo_right_ant_data_fine<-rbind(short_right_hippo_ant_R_simscene_fine,short_right_hippo_ant_R_samescene_fine,short_right_hippo_ant_R_xcon_fine, short_right_hippo_ant_UR_simscene_fine,short_right_hippo_ant_UR_samescene_fine,short_right_hippo_ant_UR_xcon_fine,long_right_hippo_ant_R_simscene_fine,long_right_hippo_ant_R_samescene_fine,long_right_hippo_ant_R_xcon_fine, long_right_hippo_ant_UR_simscene_fine,long_right_hippo_ant_UR_samescene_fine,long_right_hippo_ant_UR_xcon_fine)
 
-#create post hippo dataset
+#create right post hippo dataset
 hippo_right_post_data_fine<-rbind(short_right_hippo_post_R_simscene_fine,short_right_hippo_post_R_samescene_fine,short_right_hippo_post_R_xcon_fine, short_right_hippo_post_UR_simscene_fine,short_right_hippo_post_UR_samescene_fine,short_right_hippo_post_UR_xcon_fine,long_right_hippo_post_R_simscene_fine,long_right_hippo_post_R_samescene_fine,long_right_hippo_post_R_xcon_fine, long_right_hippo_post_UR_simscene_fine,long_right_hippo_post_UR_samescene_fine,long_right_hippo_post_UR_xcon_fine)
 
+#create mPFC dataset
+BNA_mPFC2_data_fine<-rbind(short_BNA_mPFC2_R_simscene_fine,short_BNA_mPFC2_R_samescene_fine,short_BNA_mPFC2_R_xcon_fine, short_BNA_mPFC2_UR_simscene_fine,short_BNA_mPFC2_UR_samescene_fine,short_BNA_mPFC2_UR_xcon_fine,long_BNA_mPFC2_R_simscene_fine,long_BNA_mPFC2_R_samescene_fine,long_BNA_mPFC2_R_xcon_fine, long_BNA_mPFC2_UR_simscene_fine,long_BNA_mPFC2_UR_samescene_fine,long_BNA_mPFC2_UR_xcon_fine)
+
 # clean up enviro
+rm(short_right_hippo_ant_R_simscene_fine,short_right_hippo_ant_R_samescene_fine,short_right_hippo_ant_R_xcon_fine, short_right_hippo_ant_UR_simscene_fine,short_right_hippo_ant_UR_samescene_fine,short_right_hippo_ant_UR_xcon_fine,long_right_hippo_ant_R_simscene_fine,long_right_hippo_ant_R_samescene_fine,long_right_hippo_ant_R_xcon_fine, long_right_hippo_ant_UR_simscene_fine,long_right_hippo_ant_UR_samescene_fine,long_right_hippo_ant_UR_xcon_fine)
+
 rm(short_right_hippo_post_R_simscene_fine,short_right_hippo_post_R_samescene_fine,short_right_hippo_post_R_xcon_fine, short_right_hippo_post_UR_simscene_fine,short_right_hippo_post_UR_samescene_fine,short_right_hippo_post_UR_xcon_fine,long_right_hippo_post_R_simscene_fine,long_right_hippo_post_R_samescene_fine,long_right_hippo_post_R_xcon_fine, long_right_hippo_post_UR_simscene_fine,long_right_hippo_post_UR_samescene_fine,long_right_hippo_post_UR_xcon_fine)
 
-
-
-```
-
-# Right Posterior hippocampus
-
-## Model 
-```{r, fig.height=5,fig.width=4.5}
-# model 
-model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=hippo_right_post_data_fine, na.action=na.omit)
-
-# check model assumptions 
-hist(residuals(model)) #looks normal 
-plot(model)#should look fairly uniform and random. 
-
-# model stats
-anova(model)
-emmeans(model, list(pairwise ~ delay:congruency), adjust = "none", lmer.df = "satterthwaite", lmerTest.limit = 28178) 
+rm(short_BNA_mPFC2_R_simscene_fine,short_BNA_mPFC2_R_samescene_fine,short_BNA_mPFC2_R_xcon_fine, short_BNA_mPFC2_UR_simscene_fine,short_BNA_mPFC2_UR_samescene_fine,short_BNA_mPFC2_UR_xcon_fine,long_BNA_mPFC2_R_simscene_fine,long_BNA_mPFC2_R_samescene_fine,long_BNA_mPFC2_R_xcon_fine, long_BNA_mPFC2_UR_simscene_fine,long_BNA_mPFC2_UR_samescene_fine,long_BNA_mPFC2_UR_xcon_fine)
 
 ```
 
 
-## Plots
+# Right Anterior Hippocampus 
 
 Supplementary Fig. 11
 ```{r, fig.height=5,fig.width=4.5}
-## Plot all conditions, to visualize ##
 
+# model to plot 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=hippo_right_ant_data_fine, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+
+# Break up into all conditions to visualize 
 eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay:congruency), adjust = "none"))
-eff_interaction<-subset(eff_interaction, contrast == ".")
+eff_interaction<-subset(eff_interaction, X1 == ".")
 
-stats<-summarySEwithin(data=hippo_right_post_data_fine, measurevar = "R_fish", withinvars = c("congruency","delay","condition"), idvar = "subj", na.rm=TRUE)
-## add estiamted marginal mean to the stats dataset
+# summarize to plot 
+stats<-summarySEwithin(data=hippo_right_ant_data_fine, measurevar = "R_fish", withinvars = c("congruency","delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and standard error
 stats$emmean<-eff_interaction$emmean
 stats$upper_se<-stats$emmean + stats$se
 stats$lower_se<-stats$emmean - stats$se
 stats
 
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se)) +
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank(), axis.text=element_text(size=18), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#253494","#2c7fb8","#41b6c4", "#7fcdbb", "#c7e9b4", "#ffffcc"), labels = c("C same scene", "C similar scene", "C other context", "IC same scene", "IC similar scene", "IC other context")) +
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long")) +
+  scale_y_continuous(breaks = seq(-0.01,0.1,0.01), expand = c(0, 0), limits = c(-0.01,0.1)) +
+  geom_hline(yintercept=0) +
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("anterior hippocampus")
+
+
+
+```
+
+
+# Right Posterior Hippocampus
+
+Supplementary Fig. 11
+```{r, fig.height=5,fig.width=4.5}
+
+# model to plot 
+model<-lmer(R_fish ~ condition*congruency*delay + (1+CB_order|subj), data=hippo_right_post_data_fine, na.action=na.omit, control = lmerControl(optimizer ="Nelder_Mead"))
+
+## break data up into all conditions to visualize 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay:congruency), adjust = "none"))
+eff_interaction<-subset(eff_interaction, X1 == ".")
+
+# summarize to plot 
+stats<-summarySEwithin(data=hippo_right_post_data_fine, measurevar = "R_fish", withinvars = c("congruency","delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, an SE
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
 ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
   theme_classic() +
   geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
   geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
-  labs(x="", y="similarity (Fisher z)") +
-  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank()) +
-  theme(axis.text=element_text(size=18))+
-  labs(fill="") +
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank(), axis.text=element_text(size=18), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
   scale_fill_manual(values=c("#253494","#2c7fb8","#41b6c4", "#7fcdbb", "#c7e9b4", "#ffffcc"), labels = c("C same scene", "C similar scene", "C other context", "IC same scene", "IC similar scene", "IC other context"))+
   scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
-  scale_y_continuous(breaks = seq(0,0.1,0.01), expand = c(0, 0), limits = c(0,0.1))+
+  scale_y_continuous(breaks = seq(-0.01,0.1,0.01), expand = c(0, 0), limits = c(-0.01,0.1))+
   geom_hline(yintercept=0)+
-  ggtitle("posterior hippocampus")+
-  theme(plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom")
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("posterior hippocampus")
 
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+# mPFC 
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+Supplementary Fig. 11. 
+```{r, fig.height=5,fig.width=4.5}
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+# model to plot 
+model<-lmer(R_fish ~ condition*congruency*delay + (1|subj), data=BNA_mPFC2_data_fine, na.action=na.omit)
 
+# break it up into all condiitons to visualize 
+eff_interaction<-as.data.frame(emmeans(model, list(pairwise ~ condition:delay:congruency), adjust = "none"))
+eff_interaction<-subset(eff_interaction, X1 == ".")
+
+# summarize to plot 
+stats<-summarySEwithin(data=BNA_mPFC2_data_fine, measurevar = "R_fish", withinvars = c("congruency","delay","condition"), idvar = "subj", na.rm=TRUE)
+## add estiamted marginal mean to the stats dataset, and SE
+stats$emmean<-eff_interaction$emmean
+stats$upper_se<-stats$emmean + stats$se
+stats$lower_se<-stats$emmean - stats$se
+stats
+
+# plot 
+ggplot(stats, aes(x=delay, y=emmean, fill=congruency:condition)) +
+  theme_classic() +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8, color = "black") +
+  geom_errorbar(width = .0, position = position_dodge(0.8), aes(ymin=lower_se, ymax=upper_se))+
+  theme(axis.title = element_text(size=20), axis.ticks.x=element_blank(), axis.text=element_text(size=18), plot.title = element_text(size=22, face="bold", hjust=0.5), legend.text=element_text(size=16), legend.position = "bottom",axis.title.y = ggtext::element_markdown()) +
+  scale_fill_manual(values=c("#253494","#2c7fb8","#41b6c4", "#7fcdbb", "#c7e9b4", "#ffffcc"), labels = c("congruent same", "congruent sim", "congruent other", "incongruent same", "incongruent sim", "incongruent other"))+
+  scale_x_discrete(limits=c("short", "long"), labels=c("short", "long"))+
+  scale_y_continuous(breaks = seq(-0.01,0.1,0.01), expand = c(0, 0), limits = c(-0.01,0.1))+
+  geom_hline(yintercept=0)+
+  labs(x="", y="similarity (Fisher *z*)", fill="") +
+  ggtitle("mPFC")
+```
